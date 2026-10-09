@@ -17,17 +17,18 @@ const TMAX = 3;
 
 const current = () => (st.part === "E" ? symPart(st.L) : st.part === "W" ? antiPart(st.L) : st.L);
 
+let presetSeg = null;
 const entrySliders = [];
 const tSlider = slider({ label: "時刻 t", min: 0, max: TMAX, step: 0.01, value: 0, format: (v) => v.toFixed(2), onInput: (v) => { stop(); st.t = v; render(); } });
 document.getElementById("controls").append(
-  field("流れ", segmented(Object.entries(PRESETS).map(([k, p]) => [k, p.name]), st.preset, (v) => {
+  field("流れ", presetSeg = segmented(Object.entries(PRESETS).map(([k, p]) => [k, p.name]), st.preset, (v) => {
     st.preset = v;
     st.L = PRESETS[v].L.map((r) => r.slice());
     entrySliders.forEach((s, k) => s.set(st.L[k >> 1][k & 1]));
     render();
   })),
   ...[[0, 0], [0, 1], [1, 0], [1, 1]].map(([i, j]) => {
-    const s = slider({ label: `L${i + 1}${j + 1}`, min: -1, max: 1, step: 0.05, value: st.L[i][j], format: (v) => v.toFixed(2), onInput: (v) => { st.L[i][j] = v; render(); } });
+    const s = slider({ label: `L${i + 1}${j + 1}`, min: -1, max: 1, step: 0.05, value: st.L[i][j], format: (v) => v.toFixed(2), onInput: (v) => { st.L[i][j] = v; presetSeg.set(null); render(); } });
     entrySliders.push(s);
     return s;
   }),
@@ -41,7 +42,7 @@ function play() {
   playBtn.textContent = "停止";
   let last = performance.now();
   const step = (now) => {
-    st.t = Math.min(TMAX, st.t + (now - last) / 1000);
+    st.t = Math.min(TMAX, st.t + Math.max(0, now - last) / 1000); // the first frame can predate the click
     last = now;
     tSlider.set(st.t);
     render();
@@ -75,6 +76,7 @@ function render() {
   const F = expm2(A.map((r) => r.map((v) => v * st.t))); // flow map x(t) = exp(A t) x0
   const map = (p) => matvec(F, p);
   const E = symPart(st.L), W = antiPart(st.L), ev = eigSym2(E);
+  const evA = eigSym2(symPart(A));
   mE.update(E, { vmax: 1 });
   mW.update(W, { vmax: 1 });
 
@@ -87,10 +89,12 @@ function render() {
   const d0 = [Math.cos((st.lineDeg * Math.PI) / 180), Math.sin((st.lineDeg * Math.PI) / 180)];
   const d = map(d0);
   const axis = (v, s) => ({ x1: -2.4 * v[0], z1: -2.4 * v[1], x2: 2.4 * v[0], z2: 2.4 * v[1], color: "var(--c4)", dash: s });
+  // zoom out when the element has grown beyond the default view
+  const extent = Math.max(2.2, ...circle.map(map).map((p) => Math.max(Math.abs(p[0]), Math.abs(p[1]))));
   scene.draw({
-    view: { cx: 0, cz: 0, span: 5 },
+    view: { cx: 0, cz: 0, span: 2.3 * extent },
     axes: { x: "x", up: "y", out: "z⊙" },
-    lines: Math.abs(ev.values[0]) > 1e-9 ? [axis(ev.vectors[0], "6 4"), axis(ev.vectors[1], "2 4")] : [],
+    lines: evA.degenerate ? [] : [axis(evA.vectors[0], "6 4"), axis(evA.vectors[1], "2 4")],
     arrows: [...vel, { x: -d[0] / 2, z: -d[1] / 2, vx: d[0], vz: d[1], color: "var(--c2)", width: 3 }],
     polys: [{ points: circle.map(map), opacity: 0.6 }],
     paths: gridLines.map((ln) => ({ points: ln.map(map), color: "var(--c1)", width: 1 })),
@@ -100,13 +104,15 @@ function render() {
   const rate = 2 * dot(d, matvec(symPart(A), d));
   const len = Math.hypot(...d);
   const div = trace(A), wz = omegaZ(A);
+  const P = st.part === "L" ? "L" : st.part; // name of the part that moves the element
   document.getElementById("readout").replaceChildren(h("table", { class: "data", style: { marginTop: "10px" } },
-    h("tr", {}, h("td", {}, "E の固有値（主ひずみ速度）"), h("td", {}, ev.values.map((v) => fmt(v, 3)).join(", "))),
-    h("tr", {}, h("td", {}, "局所角速度 ω_z = W₂₁"), h("td", {}, fmt(omegaZ(st.L), 3))),
-    h("tr", {}, h("td", {}, "発散 tr L（面積の増加率）"), h("td", {}, fmt(trace(st.L), 3))),
+    h("tr", {}, h("th", {}, `動かしている部分 A = ${P}`), h("th", {}, "")),
+    h("tr", {}, h("td", {}, "A の対称部分の固有値（主ひずみ速度）"), h("td", {}, evA.values.map((v) => fmt(v, 3)).join(", "))),
+    h("tr", {}, h("td", {}, "局所角速度 ω_z"), h("td", {}, fmt(wz, 3))),
+    h("tr", {}, h("td", {}, "発散 tr A（面積の増加率）"), h("td", {}, fmt(div, 3))),
     h("tr", {}, h("td", {}, `物質線の長さ（t = ${st.t.toFixed(2)}）`), h("td", {}, fmt(len, 4))),
-    h("tr", {}, h("td", {}, "d|δx|²/dt = 2δxᵀEδx"), h("td", {}, fmt(rate, 4))),
-    h("tr", {}, h("td", {}, "要素の面積比 det exp(Lt)"), h("td", {}, fmt(F[0][0] * F[1][1] - F[0][1] * F[1][0], 4)))),
+    h("tr", {}, h("td", {}, "d|δx|²/dt = 2δxᵀ(A の対称部分)δx"), h("td", {}, fmt(rate, 4))),
+    h("tr", {}, h("td", {}, "要素の面積比 det exp(At)"), h("td", {}, fmt(F[0][0] * F[1][1] - F[0][1] * F[1][0], 4)))),
     h("p", { class: "caption" }, st.part === "W"
       ? `W だけで動かすと、要素は角速度 ${fmt(wz, 3)} で回るだけで、円は円のまま、物質線の長さも変わらない。`
       : st.part === "E"

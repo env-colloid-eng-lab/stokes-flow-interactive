@@ -15,17 +15,18 @@ const st = { preset: "b16", T: PRESETS.b16.T.map((r) => r.slice()), phi: 30, aDe
 const deg = (d) => (d * Math.PI) / 180;
 const unit = (d) => [Math.cos(deg(d)), Math.sin(deg(d))];
 
+let presetSeg = null;
 const entrySliders = [];
 const controls = document.getElementById("controls");
 controls.append(
-  field("テンソル", segmented(Object.entries(PRESETS).map(([k, p]) => [k, p.name]), st.preset, (v) => {
+  field("テンソル", presetSeg = segmented(Object.entries(PRESETS).map(([k, p]) => [k, p.name]), st.preset, (v) => {
     st.preset = v;
     st.T = PRESETS[v].T.map((r) => r.slice());
     entrySliders.forEach((s, k) => s.set(st.T[k >> 1][k & 1]));
     render();
   })),
   ...[[0, 0], [0, 1], [1, 0], [1, 1]].map(([i, j]) => {
-    const s = slider({ label: `T${i + 1}${j + 1}`, min: -4, max: 4, step: 0.1, value: st.T[i][j], format: (v) => v.toFixed(1), onInput: (v) => { st.T[i][j] = v; render(); } });
+    const s = slider({ label: `T${i + 1}${j + 1}`, min: -4, max: 4, step: 0.1, value: st.T[i][j], format: (v) => v.toFixed(1), onInput: (v) => { st.T[i][j] = v; presetSeg.set(null); render(); } });
     entrySliders.push(s);
     return s;
   }),
@@ -79,15 +80,23 @@ function render() {
     row("二重縮約 TᵢⱼTᵢⱼ", fmt(doubleContraction(T, T)), fmt(doubleContraction(Tp, Tp)), "変わらない"),
     row("対称部分の固有値", ev.values.map((v) => fmt(v, 3)).join(", "), eigSym2(symPart(Tp)).values.map((v) => fmt(v, 3)).join(", "), "変わらない")));
 
-  const phis = Array.from({ length: 181 }, (_, k) => k);
-  const comps = phis.map((p) => transformTensor(rotation2(deg(p)), T));
+  const comps = componentsVsAngle(T);
   const colors = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)"];
   plot.update({
     series: [
       ...[[0, 0], [0, 1], [1, 0], [1, 1]].map(([i, j], k) => ({ name: `T′${i + 1}${j + 1}`, color: colors[k], points: phis.map((p, n) => [p, comps[n][i][j]]) })),
       { name: "トレース", color: "var(--muted)", dash: "2 3", points: phis.map((p) => [p, trace(T)]) },
     ],
-    vlines: [{ x: st.phi }, { x: ((ev.angle * 180) / Math.PI + 180) % 180, color: "var(--c5)", dash: "6 3" }],
+    vlines: [{ x: st.phi }, ...(ev.degenerate ? [] : [{ x: ((ev.angle * 180) / Math.PI + 180) % 180, color: "var(--c5)", dash: "6 3" }])],
   });
+}
+
+// The curves depend only on T; recompute them only when T changes (not on phi, a, b).
+const phis = Array.from({ length: 181 }, (_, k) => k);
+let compsKey = "", compsCache = null;
+function componentsVsAngle(T) {
+  const key = JSON.stringify(T);
+  if (key !== compsKey) { compsKey = key; compsCache = phis.map((p) => transformTensor(rotation2(deg(p)), T)); }
+  return compsCache;
 }
 render();

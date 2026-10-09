@@ -21,16 +21,19 @@ export const symPart = (L) => L.map((row, i) => row.map((v, j) => (v + L[j][i]) 
 export const antiPart = (L) => L.map((row, i) => row.map((v, j) => (v - L[j][i]) / 2));
 
 // Eigen-decomposition of a symmetric 2x2 matrix: values descending, unit vectors.
+// degenerate: the two eigenvalues coincide (isotropic), so every direction is principal and
+// the returned vectors are arbitrary.
 export function eigSym2(S) {
   const [[a, b], [, d]] = S;
   const m = (a + d) / 2, r = Math.hypot((a - d) / 2, b);
   const theta = 0.5 * Math.atan2(2 * b, a - d); // direction of the larger eigenvalue
   const v1 = [Math.cos(theta), Math.sin(theta)], v2 = [-Math.sin(theta), Math.cos(theta)];
-  return { values: [m + r, m - r], vectors: [v1, v2], angle: theta };
+  const degenerate = r <= 1e-12 * (Math.abs(m) + 1);
+  return { values: [m + r, m - r], vectors: [v1, v2], angle: theta, degenerate };
 }
 
 // Planar rotation rate omega_z = W_21 (so that W r = omega x r).
-export const omegaZ = (L) => (L[1][0] - L[0][1]) / 2;
+export const omegaZ = (L) => antiPart(L)[1][0];
 
 // Traction t = sigma n and its normal / tangential parts. The tangent is n rotated by +90 deg.
 export function traction2(sigma, n) {
@@ -44,8 +47,8 @@ export const stressTorqueZ = (sigma) => sigma[1][0] - sigma[0][1];
 
 // Mohr circle of a symmetric 2D stress: centre and radius.
 export function mohr(sigma) {
-  const c = (sigma[0][0] + sigma[1][1]) / 2;
-  return { centre: c, radius: Math.hypot((sigma[0][0] - sigma[1][1]) / 2, sigma[0][1]) };
+  const [s1, s2] = eigSym2(sigma).values;
+  return { centre: (s1 + s2) / 2, radius: (s1 - s2) / 2 };
 }
 
 // Exact flow map of the linear field u = L x: x(t) = exp(L t) x0 (2x2, by scaling and squaring).

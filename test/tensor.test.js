@@ -52,6 +52,8 @@ test("problem 1.8 and simple shear: W does not stretch, E has eigenvalues +-gamm
   closeArray(W, [[0, g / 2], [-g / 2, 0]], { rtol: 0 });
   close(omegaZ(L), -g / 2, { rtol: 0 });
   for (const x of [[1, 0], [0.3, -2]]) close(bilinear(W, x, x), 0, { atol: 1e-15 });
+  assert.equal(eigSym2([[0.3, 0], [0, 0.3]]).degenerate, true); // isotropic: every direction is principal
+  assert.equal(eigSym2([[0, 0], [0, -0.5]]).degenerate, false);
   const { values, angle } = eigSym2(E);
   closeArray(values, [g / 2, -g / 2], { rtol: 1e-14 });
   close(angle, Math.PI / 4, { rtol: 1e-14 });
