@@ -4,6 +4,7 @@
 // that enters the suspension stress with a plus sign.
 import { eye, zeros, norm, dot, cross, symEig, matvec, outer, add, scale, transpose } from "../core/linalg.js";
 import { stf } from "./stf.js";
+import { exteriorRadius } from "./oseen.js";
 
 export { stf };
 const I3 = () => eye(3);
@@ -47,11 +48,7 @@ export function sphereRule(nt = 8, np = 16) {
   return rule;
 }
 
-function exterior(r, a) {
-  const R = norm(r);
-  if (!(R >= a * (1 - 1e-12) && a > 0)) throw new RangeError("exterior points required");
-  return R;
-}
+const exterior = exteriorRadius;
 
 // Sphere translating with U in fluid at rest.
 export function translationField(r, U, { a = 1, mu = 1 } = {}) {

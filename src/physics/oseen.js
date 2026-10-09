@@ -67,9 +67,16 @@ export function dipole(r, D, { mu = 1 } = {}) {
   });
 }
 
+// |r| for a point on or outside the sphere of radius a (a rounding margin admits surface points).
+export function exteriorRadius(r, a) {
+  const R = norm(r);
+  if (!(a > 0 && R >= a * (1 - 1e-12))) throw new RangeError("exterior points required");
+  return R;
+}
+
 // Flow outside a sphere translating with U: (G + a^2/6 nabla^2 G)(6 pi mu a U).
 export function sphereFlow(r, U, { a = 1, mu = 1 } = {}) {
-  if (!(a > 0 && norm(r) >= a * (1 - 1e-12))) throw new RangeError("r must be outside sphere"); // allow rounding on the surface
+  exteriorRadius(r, a);
   const G = oseen(r, { mu }), L = lapOseen(r, { mu });
   const f = U.map((u) => 6 * Math.PI * mu * a * u);
   return [0, 1, 2].map((i) => [0, 1, 2].reduce((s, j) => s + (G[i][j] + (a * a / 6) * L[i][j]) * f[j], 0));
