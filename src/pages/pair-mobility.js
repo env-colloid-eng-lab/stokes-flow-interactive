@@ -91,7 +91,9 @@ function toggle(mode) {
     const wall = Math.min(0.05, (now - last) / 1000);
     last = now;
     advance(wall);
-    render();
+    const c = current(); // once per frame, after the state has moved
+    record(c);
+    render(c);
     if (state.mode) state.anim = requestAnimationFrame(step);
   };
   state.anim = requestAnimationFrame(step);
@@ -130,16 +132,14 @@ function advance(wall) {
     state.r = Math.max(2.02, state.r - dt * vrel);
     rSlider.set(state.r);
     status.textContent = state.r <= 2.02 ? "隙間 h = 0.02a で止めた。この先は 9. で扱う。" : "距離が縮まり、X と Y が変わる。";
-    if (state.r <= 2.02) { state.t += dt; record(); stop(); return; }
+    if (state.r <= 2.02) stop();
   }
   state.t += dt;
-  record();
 }
 
-function record() {
+function record(c) {
   const sel = matrixView.selected;
   if (!sel) return;
-  const c = current();
   const [i, j] = sel;
   const key = Math.floor(i / 3) === Math.floor(j / 3) ? "self" : "cross";
   state.hist.push({ t: state.t, v: c.shown[i][j], X: c.coeffs.par[key], Y: c.coeffs.perp[key] });
@@ -186,8 +186,7 @@ function sourceText(key) {
 }
 
 // ---------- rendering ----------
-function render() {
-  const c = current();
+function render(c = current()) {
   // scene
   const [cx, cz] = state.com;
   const e = c.frame.e;
@@ -227,16 +226,7 @@ function render() {
   });
 
   // distance dependence
-  const rs = Array.from({ length: 200 }, (_, i) => 2.02 + (i * (12 - 2.02)) / 199);
-  const fam = rs.map((r) => {
-    if (state.show === "M") {
-      const m = mobilityCoefficients(r, { a, mu, kind: state.kind });
-      return { r, a1: m.par.cross * unit, a2: m.perp.cross * unit };
-    }
-    const rr = resistanceCoefficients(r, { a, mu, kind: state.kind }).R;
-    const jo = joXA(r / a, 1, polys);
-    return { r, X11: rr.par.self / unit, X12: rr.par.cross / unit, Y11: rr.perp.self / unit, Y12: rr.perp.cross / unit, J11: jo.x11, J12: jo.x12 };
-  });
+  const fam = distanceFamily();
   const tag = state.kind === "rpy" ? "RPY" : "Oseen";
   if (state.show === "M") {
     distPlot.update({
@@ -265,6 +255,25 @@ function render() {
   }
 
   renderEigen(c);
+}
+
+// Coefficient curves depend only on (show, kind); cache them so animation frames do not recompute.
+const famCache = new Map();
+function distanceFamily() {
+  const key = `${state.show}|${state.kind}`;
+  if (famCache.has(key)) return famCache.get(key);
+  const rs = Array.from({ length: 200 }, (_, i) => 2.02 + (i * (12 - 2.02)) / 199);
+  const fam = rs.map((r) => {
+    if (state.show === "M") {
+      const m = mobilityCoefficients(r, { a, mu, kind: state.kind });
+      return { r, a1: m.par.cross * unit, a2: m.perp.cross * unit };
+    }
+    const rr = resistanceCoefficients(r, { a, mu, kind: state.kind }).R;
+    const jo = joXA(r / a, 1, polys);
+    return { r, X11: rr.par.self / unit, X12: rr.par.cross / unit, Y11: rr.perp.self / unit, Y12: rr.perp.cross / unit, J11: jo.x11, J12: jo.x12 };
+  });
+  famCache.set(key, fam);
+  return fam;
 }
 
 function renderEigen(c) {

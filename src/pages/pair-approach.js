@@ -4,6 +4,7 @@ import { createPlot } from "../ui/plot.js";
 import { joPolynomials, joXA } from "../physics/jo.js";
 import { axialCollocation } from "../physics/collocation.js";
 import { resistanceCoefficients, pairMatrix } from "../models/pairA.js";
+import { approachTrajectory } from "../models/approach.js";
 
 initPage("p9");
 
@@ -12,7 +13,7 @@ const unit = 6 * Math.PI * mu * a;
 const Tmax = () => 120; // simulated time window
 const polys60 = joPolynomials(60);
 
-const state = { h0: 2, hc: 0.2, K: 40, L: 32, matrixModel: "lub", tIndex: 0, colloc: [] };
+const state = { h0: 2, hc: 0.2, K: 40, L: 32, matrixModel: "lub", tFrac: 0, colloc: [] };
 
 const MODELS = {
   rpy: { name: "RPY の逆行列", color: "var(--c1)" },
@@ -33,35 +34,20 @@ function relative(model, h) {
   return { value: (c.R.par.self - c.R.par.cross) / unit, ok: model !== "jo" || c.jo.converged, c };
 }
 
-// Integrate dh/dt = -V(h), V = 2F / (6 pi mu a (X11 - X12)), with adaptive RK4.
-function trajectory(model, h0, Tmax) {
-  const V = (h) => (2 * F) / (unit * relative(model, h).value);
-  const ts = [0], hs = [h0];
-  let t = 0, hh = h0, stop = null;
-  while (t < Tmax) {
-    if (model === "jo" && !relative(model, hh).ok) { stop = "series"; break; }
-    const v = V(hh);
-    const dt = Math.min(0.5, (0.02 * hh) / v, Tmax - t);
-    const k1 = -V(hh);
-    const h2 = hh + (dt / 2) * k1; if (h2 <= 0) { stop = "contact"; break; }
-    const k2 = -V(h2);
-    const h3 = hh + (dt / 2) * k2; if (h3 <= 0) { stop = "contact"; break; }
-    const k3 = -V(h3);
-    const h4 = hh + dt * k3; if (h4 <= 0) { stop = "contact"; break; }
-    const k4 = -V(h4);
-    hh += (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
-    t += dt;
-    if (hh < 1e-4) { stop = "contact"; ts.push(t); hs.push(Math.max(hh, 1e-4)); break; }
-    ts.push(t); hs.push(hh);
-  }
-  return { ts, hs, stop };
+// Gap trajectories, cached per model; a control invalidates only the models it affects.
+function trajectory(model) {
+  return approachTrajectory((hh) => relative(model, hh), {
+    h0: state.h0, Tmax: Tmax(), F, a, mu,
+    // RPY alone reaches contact in finite time; the lubricated gap only decays.
+    contactBelow: model === "rpy" ? 1e-9 : undefined,
+  });
 }
 
 // ---------- controls ----------
 const controls = document.getElementById("controls");
 controls.append(
-  slider({ label: "潤滑の切替え h_c/a", min: 0.05, max: 0.5, step: 0.01, value: state.hc, format: (v) => v.toFixed(2), onInput: (v) => { state.hc = v; renderAll(); } }),
-  h("label", {}, "JO の次数 K", segmented([[10, "10"], [20, "20"], [40, "40"], [60, "60"]], state.K, (v) => { state.K = v; renderAll(); })));
+  slider({ label: "潤滑の切替え h_c/a", min: 0.05, max: 0.5, step: 0.01, value: state.hc, format: (v) => v.toFixed(2), onInput: (v) => { state.hc = v; update(["lub"]); } }),
+  h("label", {}, "JO の次数 K", segmented([[10, "10"], [20, "20"], [40, "40"], [60, "60"]], state.K, (v) => { state.K = v; update(["jo"]); renderColloc(); })));
 
 const cc = document.getElementById("colloc-controls");
 const collocStatus = h("span", { class: "caption" });
@@ -71,7 +57,6 @@ cc.append(
 
 const mc = document.getElementById("motion-controls");
 const tSlider = slider({ label: "時刻", min: 0, max: 1, step: 0.001, value: 0, format: (v) => `t = ${(v * Tmax()).toFixed(1)}`, onInput: (v) => { state.tFrac = v; renderMatrix(); renderGap(); } });
-state.tFrac = 0;
 mc.append(
   slider({ label: "最初の隙間 h₀/a", min: 0.3, max: 4, step: 0.1, value: state.h0, format: (v) => v.toFixed(1), onInput: (v) => { state.h0 = v; renderMotion(); } }),
   tSlider);
@@ -87,10 +72,16 @@ matrixView.select(0, 3);
 
 // ---------- resistance vs gap ----------
 const hgrid = Array.from({ length: 160 }, (_, i) => 10 ** (-3 + (i * 4) / 159));
+const curveCache = new Map();
+function curve(model) {
+  const key = `${model}|${model === "lub" ? state.hc : model === "jo" ? state.K : ""}`;
+  if (!curveCache.has(key)) curveCache.set(key, hgrid.map((hh) => ({ hh, ...relative(model, hh) })));
+  return curveCache.get(key);
+}
 function renderResistance() {
   const series = [];
-  for (const model of ["rpy", "lub"]) series.push({ name: MODELS[model].name, color: MODELS[model].color, points: hgrid.map((hh) => [hh, relative(model, hh).value]) });
-  const jo = hgrid.map((hh) => ({ hh, ...relative("jo", hh) }));
+  for (const model of ["rpy", "lub"]) series.push({ name: MODELS[model].name, color: MODELS[model].color, points: curve(model).map((p) => [p.hh, p.value]) });
+  const jo = curve("jo");
   series.push({ name: `JO 級数 K = ${state.K}（収束範囲）`, color: MODELS.jo.color, width: 2.5, points: jo.map((p) => [p.hh, p.ok ? p.value : NaN]) });
   series.push({ name: "同（未収束）", color: MODELS.jo.color, width: 1, dash: "3 3", points: jo.map((p) => [p.hh, p.ok ? NaN : p.value]) });
   series.push({ name: "潤滑の主要項 a/(2h)", color: "var(--muted)", dash: "6 4", width: 1.5, points: hgrid.map((hh) => [hh, a / (2 * hh)]) });
@@ -127,9 +118,9 @@ function renderColloc() {
 }
 
 // ---------- motion ----------
-let traj = {};
-function renderMotion() {
-  for (const m of Object.keys(MODELS)) traj[m] = trajectory(m, state.h0, Tmax());
+const traj = {};
+function renderMotion(models = Object.keys(MODELS)) {
+  for (const m of models) traj[m] = trajectory(m);
   renderGap();
   renderMatrix();
 }
@@ -147,7 +138,7 @@ function renderGap() {
   const K = (2 * F) / (3 * Math.PI * mu * a * a);
   series.push({ name: "h_c 以下での主要項 h ∝ e^{−Kt}", color: "var(--muted)", dash: "6 4", width: 1.2, points: lubTail(K) });
   const marks = Object.entries(MODELS).map(([k, m]) => ({ x: Math.min(t, traj[k].ts.at(-1)), y: hAt(k, t).h, color: m.color }));
-  gapPlot.update({ series, points: marks, ydomain: [1e-4, Math.max(5, state.h0 * 1.5)], xdomain: [0, Tmax()], vlines: [{ x: t }] });
+  gapPlot.update({ series, points: marks, ydomain: [1e-9, Math.max(5, state.h0 * 1.5)], xdomain: [0, Tmax()], vlines: [{ x: t }] });
   const notes = [];
   if (traj.rpy.stop === "contact") notes.push(`RPY だけでは t ≈ ${traj.rpy.ts.at(-1).toFixed(1)} で接触する（接近速度が h → 0 でも有限）。`);
   if (traj.jo.stop === "series") notes.push(`JO 級数（K = ${state.K}）は h ≈ ${traj.jo.hs.at(-1).toPrecision(2)}a で収束しなくなるので、そこで止めた。`);
@@ -183,7 +174,7 @@ function explainEntry(i, j, v) {
   if (k === 0) {
     wrap.append(tex(same ? "X_{11}" : "X_{12}", { display: true }), h("div", { class: "caption" }, `出典：${c.source.par}`));
     if (m === "lub" && c.zeta > 0) wrap.append(h("div", { class: "val" }, `教材潤滑 ζₙ/(6πμa) = ${fmt(c.zeta / unit)} を ${same ? "加えた" : "引いた"}。`));
-    if (m === "jo") wrap.append(h("div", { class: "caption" }, c.jo.converged ? `K = ${c.jo.K} 次で収束（K−10 次との相対差 ${fmt(c.jo.change, 2)}）。` : "級数が収束していない。この値は使えない。"));
+    if (m === "jo") wrap.append(h("div", { class: "caption" }, c.jo.converged ? `K = ${c.jo.K} 次で収束（${c.jo.Kc} 次との相対差 ${fmt(c.jo.change, 2)}）。` : "級数が収束していない。この値は使えない。"));
   } else {
     wrap.append(tex(same ? "Y_{11}" : "Y_{12}", { display: true }),
       h("div", { class: "caption" }, `出典：${c.source.perp}。案Aでは垂直方向の厳密な関数がないので、どのモデルでも RPY の値を使っている。`));
@@ -208,6 +199,9 @@ function renderDiff() {
   });
 }
 
-function renderAll() { renderResistance(); renderColloc(); renderMotion(); }
-renderAll();
+// Recompute only what depends on the changed models.
+function update(models) { renderResistance(); renderMotion(models); }
+renderResistance();
+renderColloc();
+renderMotion();
 renderDiff();

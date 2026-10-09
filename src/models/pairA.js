@@ -4,25 +4,17 @@
 import { joXA } from "../physics/jo.js";
 import { normalLubricationZeta } from "../physics/lubrication.js";
 import { zeros } from "../core/linalg.js";
+import { selfMobility, rpyParallelPerp } from "../physics/rpy.js";
 
 const PI = Math.PI;
 
 // Mobility coefficients along (par) and across (perp) the line of centres.
 export function mobilityCoefficients(r, { a = 1, mu = 1, kind = "rpy" } = {}) {
-  const m0 = 1 / (6 * PI * mu * a);
-  let par, perp;
-  if (kind === "oseen") {
-    par = 1 / (4 * PI * mu * r);
-    perp = 1 / (8 * PI * mu * r);
-  } else if (r >= 2 * a) {
-    par = (1 / (4 * PI * mu * r)) * (1 - (2 * a * a) / (3 * r * r));
-    perp = (1 / (8 * PI * mu * r)) * (1 + (2 * a * a) / (3 * r * r));
-  } else {
-    // regularised overlap form (not contact physics)
-    par = m0 * (1 - (9 * r) / (32 * a) + (3 * r) / (32 * a));
-    perp = m0 * (1 - (9 * r) / (32 * a));
-  }
-  return { par: { self: m0, cross: par }, perp: { self: m0, cross: perp } };
+  const m0 = selfMobility(a, mu);
+  const c = kind === "oseen"
+    ? { par: 1 / (4 * PI * mu * r), perp: 1 / (8 * PI * mu * r) }
+    : rpyParallelPerp(r, { a, mu });
+  return { par: { self: m0, cross: c.par }, perp: { self: m0, cross: c.perp } };
 }
 
 // Inverse of [[m0, c], [c, m0]]: self = m0/(m0^2 - c^2), cross = -c/(m0^2 - c^2).
@@ -48,12 +40,14 @@ export function resistanceCoefficients(r, { a = 1, mu = 1, kind = "rpy", axial =
     if (!polys) throw new Error("JO polynomials required");
     const s = r / a; // 2r/(a1+a2) for equal radii
     const res = joXA(s, 1, polys);
-    // convergence estimate: compare with the series truncated 10 orders earlier
-    const Kc = Math.max(0, res.terms.length - 11);
+    // Convergence estimate: compare with the series truncated about a quarter of the
+    // orders earlier (at least one even and one odd term fewer). Equal radii: lambda = 1.
+    const K = res.terms.length - 1;
+    const Kc = Math.max(0, K - Math.max(2, Math.floor(K / 4)));
     let x11c = 0, x12c = 0;
     for (let k = 0; k <= Kc; k++) (k % 2 === 0 ? (x11c += res.terms[k]) : (x12c -= res.terms[k]));
     const rel = Math.max(Math.abs(res.x11 - x11c) / Math.abs(res.x11), Math.abs(res.x12 - x12c) / Math.abs(res.x12));
-    jo = { x11: res.x11, x12: res.x12, K: res.terms.length - 1, change: rel, converged: rel < 1e-4 };
+    jo = { x11: res.x11, x12: res.x12, K, Kc, change: rel, converged: rel < 1e-4 };
     par = { self: 6 * PI * mu * a * res.x11, cross: 6 * PI * mu * a * res.x12 };
     source.par = `JO 級数 X^A（K = ${jo.K}）`;
   }

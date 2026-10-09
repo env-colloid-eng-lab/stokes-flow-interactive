@@ -141,6 +141,18 @@ export function cholesky(A) {
   return L;
 }
 
+// Solve A X = B given the Cholesky factor L of A (B a vector or a matrix).
+export function choleskySolve(L, B) {
+  const n = L.length;
+  const one = (b) => {
+    const y = b.slice();
+    for (let i = 0; i < n; i++) { for (let k = 0; k < i; k++) y[i] -= L[i][k] * y[k]; y[i] /= L[i][i]; }
+    for (let i = n - 1; i >= 0; i--) { for (let k = i + 1; k < n; k++) y[i] -= L[k][i] * y[k]; y[i] /= L[i][i]; }
+    return y;
+  };
+  return Array.isArray(B[0]) ? transpose(transpose(B).map(one)) : one(B);
+}
+
 export function isPosDef(A) {
   try { cholesky(A); return true; } catch { return false; }
 }
@@ -233,8 +245,36 @@ export function symEig(A, { tol = 1e-14, maxSweeps = 100 } = {}) {
 
 export const eigvalsSym = (A) => symEig(A).values;
 
-// 2-norm condition number from the singular values (via eigenvalues of A^T A).
+// Singular values (descending) by one-sided Jacobi rotations on the columns of A (m >= n).
+// Works on A directly, so the accuracy is not lost by squaring the condition number.
+export function singularValues(A, { tol = 1e-15, maxSweeps = 60 } = {}) {
+  const U = transpose(A); // rows of U are the columns of A
+  const n = U.length;
+  for (let sweep = 0; sweep < maxSweeps; sweep++) {
+    let rotated = false;
+    for (let p = 0; p < n - 1; p++)
+      for (let q = p + 1; q < n; q++) {
+        const up = U[p], uq = U[q];
+        let alpha = 0, beta = 0, gamma = 0;
+        for (let i = 0; i < up.length; i++) { alpha += up[i] * up[i]; beta += uq[i] * uq[i]; gamma += up[i] * uq[i]; }
+        if (Math.abs(gamma) <= tol * Math.sqrt(alpha * beta)) continue;
+        rotated = true;
+        const zeta = (beta - alpha) / (2 * gamma);
+        const t = Math.sign(zeta || 1) / (Math.abs(zeta) + Math.sqrt(1 + zeta * zeta));
+        const c = 1 / Math.sqrt(1 + t * t), s = c * t;
+        for (let i = 0; i < up.length; i++) {
+          const x = up[i], y = uq[i];
+          up[i] = c * x - s * y;
+          uq[i] = s * x + c * y;
+        }
+      }
+    if (!rotated) break;
+  }
+  return U.map(norm).sort((x, y) => y - x);
+}
+
+// 2-norm condition number sigma_max / sigma_min (as Julia's cond).
 export function cond(A) {
-  const ev = eigvalsSym(matmul(transpose(A), A));
-  return Math.sqrt(ev[ev.length - 1] / ev[0]);
+  const sv = singularValues(A.length >= A[0].length ? A : transpose(A));
+  return sv[0] / sv[sv.length - 1];
 }

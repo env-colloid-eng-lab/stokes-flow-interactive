@@ -9,11 +9,18 @@ function hexToRgb(hex) {
 }
 const mix = (a, b, t) => a.map((x, i) => Math.round(x + (b[i] - x) * t));
 
-export function colorFor(v, vmax, gamma = 0.5) {
-  const zero = hexToRgb(cssVar("--zero") || "#f3f1ec");
-  const end = hexToRgb(cssVar(v >= 0 ? "--pos" : "--neg") || (v >= 0 ? "#c2410c" : "#1d4ed8"));
+// Palette from the CSS custom properties; read once per update, not once per cell.
+export function readPalette() {
+  return {
+    zero: hexToRgb(cssVar("--zero") || "#f3f1ec"),
+    pos: hexToRgb(cssVar("--pos") || "#c2410c"),
+    neg: hexToRgb(cssVar("--neg") || "#1d4ed8"),
+  };
+}
+
+export function colorFor(v, vmax, palette, gamma = 0.5) {
   const t = vmax > 0 ? Math.min(1, Math.abs(v) / vmax) ** gamma : 0;
-  return { rgb: `rgb(${mix(zero, end, t).join(",")})`, t };
+  return { rgb: `rgb(${mix(palette.zero, v >= 0 ? palette.pos : palette.neg, t).join(",")})`, t };
 }
 
 /**
@@ -84,10 +91,11 @@ export function createMatrixView(container, opts = {}) {
     if (!M || M.length !== n || newLabels) build(n);
     M = matrix;
     vmax = fixedMax ?? Math.max(...matrix.flat().map(Math.abs));
+    const pal = readPalette();
     for (let i = 0; i < n; i++)
       for (let j = 0; j < n; j++) {
         const v = matrix[i][j];
-        const { rgb, t } = colorFor(v, vmax);
+        const { rgb, t } = colorFor(v, vmax, pal);
         const c = cells[i][j];
         c.style.background = rgb;
         c.style.color = t > 0.6 ? "#fff" : "";
@@ -97,7 +105,7 @@ export function createMatrixView(container, opts = {}) {
     paintSelection();
     legend.replaceChildren(
       h("span", {}, `−${format(vmax)}`),
-      h("span", { class: "bar", style: { background: `linear-gradient(90deg, ${colorFor(-vmax, vmax).rgb}, ${colorFor(0, vmax).rgb}, ${colorFor(vmax, vmax).rgb})` } }),
+      h("span", { class: "bar", style: { background: `linear-gradient(90deg, ${colorFor(-vmax, vmax, pal).rgb}, ${colorFor(0, vmax, pal).rgb}, ${colorFor(vmax, vmax, pal).rgb})` } }),
       h("span", {}, `+${format(vmax)}`),
       h("span", {}, "（色は |値|^0.5 で強調。小さな非対角成分も見えるようにしている）"));
     const target = hover ?? selected;

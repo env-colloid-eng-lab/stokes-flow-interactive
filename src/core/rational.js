@@ -25,9 +25,14 @@ export class Rational {
   isZero() { return this.num === 0n; }
   equals(o) { o = Rational.of(o); return this.num === o.num && this.den === o.den; }
   toNumber() {
-    // Scale to keep precision when num and den are both huge.
-    const shift = BigInt(Math.max(0, Math.max(this.num.toString(2).length, this.den.toString(2).length) - 1000));
-    return Number(this.num >> shift) / Number(this.den >> shift);
+    // Keep the leading ~64 bits of numerator and denominator separately, then rescale,
+    // so that a small numerator or denominator is never truncated to zero.
+    const bits = (x) => babs(x).toString(2).length;
+    const sn = Math.max(0, bits(this.num) - 64), sd = Math.max(0, bits(this.den) - 64);
+    const q = Number(this.num >> BigInt(sn)) / Number(this.den >> BigInt(sd));
+    const e = sn - sd;
+    // apply 2^e in two halves to avoid intermediate overflow / underflow
+    return q * 2 ** Math.trunc(e / 2) * 2 ** (e - Math.trunc(e / 2));
   }
   toString() { return this.den === 1n ? `${this.num}` : `${this.num}/${this.den}`; }
 }

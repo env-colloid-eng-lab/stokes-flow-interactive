@@ -34,12 +34,16 @@ export function rpyPairUnequal(r, a1, a2, { mu = 1 } = {}) {
   return G.map((row, i) => row.map((g, j) => g + c * L[i][j]));
 }
 
-// Pair coefficients along / across the line of centres for equal radii (r >= 2a).
+// Pair coefficients along (par) / across (perp) the line of centres for equal radii,
+// consistent with rpyPair: block = perp I + (par - perp) e e^T.
 export function rpyParallelPerp(r, { a = 1, mu = 1 } = {}) {
-  return {
-    par: (1 / (4 * Math.PI * mu * r)) * (1 - (2 * a * a) / (3 * r * r)),
-    perp: (1 / (8 * Math.PI * mu * r)) * (1 + (2 * a * a) / (3 * r * r)),
-  };
+  if (r >= 2 * a)
+    return {
+      par: (1 / (4 * Math.PI * mu * r)) * (1 - (2 * a * a) / (3 * r * r)),
+      perp: (1 / (8 * Math.PI * mu * r)) * (1 + (2 * a * a) / (3 * r * r)),
+    };
+  const m0 = selfMobility(a, mu); // regularised overlap form (not contact physics)
+  return { par: m0 * (1 - (6 * r) / (32 * a)), perp: m0 * (1 - (9 * r) / (32 * a)) };
 }
 
 // model: "rpy" | "oseen" | "self"

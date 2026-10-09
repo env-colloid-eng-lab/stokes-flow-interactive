@@ -1,6 +1,6 @@
 // Teaching model: ONLY a normal leading-order lubrication correction (StokesLab.jl).
 // This is not the matched two-body correction of full Stokesian Dynamics.
-import { cholesky, solve, eye, norm, vsub, matvec } from "../core/linalg.js";
+import { cholesky, choleskySolve, solve, eye, norm, vsub, matvec } from "../core/linalg.js";
 import { mobility, flatten, unflatten } from "./rpy.js";
 
 // zeta_n = (3 pi mu a^2 / 2)(1/h - 1/hc) for h < hc, added as zeta_n b b^T.
@@ -12,9 +12,8 @@ export const normalLubricationZeta = (h, { a = 1, mu = 1, hc = 0.2 * a } = {}) =
 export function normalResistance(X, { a = 1, mu = 1, hc = 0.2 * a } = {}) {
   if (!(hc > 0)) throw new RangeError("hc > 0 required");
   const M = mobility(X, { a, mu });
-  cholesky(M); // throws if M is not positive definite
   const n = M.length;
-  const R = solve(M, eye(n));
+  const R = choleskySolve(cholesky(M), eye(n)); // cholesky throws if M is not positive definite
   const pairs = [];
   for (let p = 0; p < X.length; p++) {
     for (let q = p + 1; q < X.length; q++) {
