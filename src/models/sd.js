@@ -34,8 +34,9 @@ export function fullSolve(M, nv, { gv, einf }) {
   const R = inv(M);
   const Rvv = getBlock(R, 0, 0, nv), Rvs = getBlock(R, 0, nv, nv, ns);
   const Rsv = getBlock(R, nv, 0, ns, nv), Rss = getBlock(R, nv, nv, ns);
-  const qv = solve(Rvv, gv.map((g, i) => g + matvec(Rvs, einf)[i]));
-  const gs = matvec(Rsv, qv).map((x, i) => x - matvec(Rss, einf)[i]);
+  const RvsE = matvec(Rvs, einf), RssE = matvec(Rss, einf);
+  const qv = solve(Rvv, gv.map((g, i) => g + RvsE[i]));
+  const gs = matvec(Rsv, qv).map((x, i) => x - RssE[i]);
   return { gs, qv };
 }
 

@@ -60,10 +60,11 @@ export function pairwiseSumResistance(X, opts = {}) {
 /**
  * Coaxial spheres moving along the axis: exact (collocation) N-body resistance and the
  * pairwise sum built from exact two-body solutions with the same order L.
- * pairCache (a Map) may be passed to reuse two-body solutions between calls.
+ * pairCache (a Map) may be passed to reuse two-body solutions between calls. It is cleared
+ * once it holds more than pairCacheLimit entries, so a long slider session stays bounded.
  */
-export function axialManyBody(centers, radii, { L = 16, mu = 1, pairCache = null } = {}) {
-  if (pairCache && pairCache.size > 500) pairCache.clear(); // keep a long slider session bounded
+export function axialManyBody(centers, radii, { L = 16, mu = 1, pairCache = null, pairCacheLimit = 500 } = {}) {
+  if (pairCache && pairCache.size > pairCacheLimit) pairCache.clear();
   const full = axialCollocation(centers, radii, { L, mu, withCondition: false });
   let worst = full.boundaryError;
   const pairR = (p, q) => {

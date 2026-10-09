@@ -1,7 +1,7 @@
 import { initPage, h, field, slider, segmented, fmt, frameThrottle } from "../ui/page.js";
 import { createMatrixView } from "../ui/matrixView.js";
 import { createPlot } from "../ui/plot.js";
-import { matmul, transpose, solve } from "../core/linalg.js";
+import { matmul, transpose, solve, dot } from "../core/linalg.js";
 import { mulberry32, normalSampler } from "../core/random.js";
 import { stf, stf5, ddot, naive5 } from "../physics/stf.js";
 import { schurReduce, fullSolve, sdResistance, isolatedResistance11 } from "../models/sd.js";
@@ -37,7 +37,6 @@ function renderStf() {
   const rand3 = () => [0, 1, 2].map(() => [0, 1, 2].map(() => Math.round(randn() * 10) / 10));
   const S = stf(rand3()), E = stf(rand3());
   const s = stf5(S), e = stf5(E), ns = naive5(S), ne = naive5(E);
-  const dot = (x, y) => x.reduce((acc, v, k) => acc + v * y[k], 0);
   const row = (label, v) => h("tr", {}, h("td", {}, label), ...v.map((x) => h("td", {}, fmt(x, 3))));
   document.getElementById("stf").replaceChildren(
     h("table", { class: "data" },
@@ -66,7 +65,7 @@ const schur = { eps: 1, einf: false };
 // Scaling the off-diagonal blocks by eps in [0, 1] keeps the matrix positive definite.
 const coupled = () => base.map((r, i) => r.map((v, j) => ((i < NV) !== (j < NV) ? schur.eps * v : v)));
 const schurView = createMatrixView(document.getElementById("schur-matrix"), {
-  labels: ["Ux", "Uy", "Uz", "Ωx", "Ωy", "Ωz", "e₁", "e₂", "e₃", "e₄", "e₅"], blocks: [6, 5],
+  labels: L11, blocks: [6, 5],
   explain: (i, j, v) => {
     const part = (k) => (k < NV ? "v" : "s");
     return h("div", {}, h("strong", {}, `M_${part(i)}${part(j)} のブロック`), h("div", { class: "val" }, fmt(v)),
@@ -104,11 +103,10 @@ renderSchur();
 // ---------------------------------------------------------------------
 const sd = { g12: 1, g23: 1, L: 24 };
 const pairCache = new Map();
-const zz = axialComponents;
 function methodsFor(z, L) {
   const ex = axialManyBody(z, z.map(() => a), { L, mu, pairCache });
   const X = z.map((v) => [0, 0, v]);
-  const Rr = zz(resistance(X, { a, mu })), R2r = zz(pairwiseSumResistance(X, { a, mu }));
+  const Rr = axialComponents(resistance(X, { a, mu })), R2r = axialComponents(pairwiseSumResistance(X, { a, mu }));
   return {
     residual: ex.boundaryError,
     list: [
@@ -146,13 +144,14 @@ function renderSd() {
       h("td", {}, fmt(speed(m.R)[1]))));
   }
   document.getElementById("sd-table").replaceChildren(h("div", { style: { overflowX: "auto" } }, table));
-  const sdR = list[3].R;
   const notes = [`境界残差の最大値 ${fmt(residual, 2)}（L = ${sd.L}）。沈降速度は孤立球の値 m₀F を単位とする。`];
-  if (Math.sign(sdR[0][2]) !== Math.sign(Rex[0][2]))
-    notes.push("SD 型の R₁₃ は符号が厳密解と逆になっている（橙色）。遠方の部分を並進の力だけで作り、ストレスレットを含めていないためである。球 1 と球 3 の結合は、間の球を経由する遠方の反射で決まるので、近接の二体補正では直らない。");
+  const flipped = [list[1], list[3]].filter((m) => Math.sign(m.R[0][2]) !== Math.sign(Rex[0][2]));
+  if (flipped.length)
+    notes.push(`${flipped.map((m) => m.name).join("と")}の R₁₃ は符号が厳密解と逆になっている（橙色）。どちらも遠方の部分を並進の力だけで作り、ストレスレットを含めていないためである。球 1 と球 3 の結合は、間の球を経由する遠方の反射で決まるので、近接の二体補正では直らない。`);
   document.getElementById("sd-note").textContent = notes.join(" ");
 }
-renderSd();
+// A failure on first render must not stop the rest of the module (plot and scan button).
+try { renderSd(); } catch (err) { document.getElementById("sd-note").textContent = `計算できなかった（${err.message}）`; }
 
 const sdPlot = createPlot(document.getElementById("sd-plot"), { height: 280, xlog: true, ylog: true, xlabel: "隙間 h/a（二つとも同じ）", ylabel: "最大相対誤差" });
 // The scan solves one configuration per task so the page stays responsive and shows progress.
@@ -174,7 +173,7 @@ document.getElementById("sd-scan").addEventListener("click", (ev) => {
     setTimeout(() => {
       try {
         const g = gaps[k];
-        const { residual, list } = methodsFor([0, 2 + g, 4 + 2 * g], 32);
+        const { residual, list } = methodsFor([0, 2 * a + g, 4 * a + 2 * g], 32);
         worstResidual = Math.max(worstResidual, residual);
         rows.push({ g, errs: list.slice(1).map((m) => maxErr(m.R, list[0].R)) });
         sdPlot.update({ series: names.map((name, i) => ({ name, color: colors[i], points: rows.map((r) => [r.g, r.errs[i]]) })) });

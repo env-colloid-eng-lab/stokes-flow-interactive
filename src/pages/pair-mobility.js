@@ -54,7 +54,7 @@ const rSlider = slider({ label: "中心間距離 r/a", min: 2.02, max: 12, step:
 const thSlider = slider({ label: "対の向き θ", min: 0, max: 180, step: 1, value: state.thetaDeg, format: (v) => `${v}°`, onInput: (v) => { state.thetaDeg = v; render(); } });
 controls.append(rSlider, thSlider,
   field("近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], state.kind, (v) => { state.kind = v; render(); })),
-  h("label", {}, "力", forcingSeg));
+  field("力", forcingSeg));
 
 const mctl = document.getElementById("matrix-controls");
 mctl.append(

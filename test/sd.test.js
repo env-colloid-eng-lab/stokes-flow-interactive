@@ -42,11 +42,10 @@ test("Schur complement reproduces the full solve; induced stresslet vanishes wit
   closeArray(isolatedResistance11().map((r, i) => r[i]), [...Array(3).fill(6 * Math.PI), ...Array(3).fill(8 * Math.PI), ...Array(5).fill(20 * Math.PI / 3)], { rtol: 1e-15 });
 });
 
-const zz = axialComponents;
 function axialCase(z) {
   const ex = axialManyBody(z, z.map(() => 1), { L: 24 });
   const X = z.map((v) => [0, 0, v]);
-  const Rr = zz(resistance(X)), R2r = zz(pairwiseSumResistance(X));
+  const Rr = axialComponents(resistance(X)), R2r = axialComponents(pairwiseSumResistance(X));
   return { ex, Rr, sd: sdResistance(Rr, ex.R2B, R2r) };
 }
 

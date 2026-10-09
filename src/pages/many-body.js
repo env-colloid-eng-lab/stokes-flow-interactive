@@ -23,7 +23,6 @@ document.getElementById("axial-controls").append(
   slider({ label: "隙間 h₂₃/a", min: 0.2, max: 4, step: 0.1, value: ax.g23, format: (v) => v.toFixed(1), onInput: (v) => { ax.g23 = v; scheduleAxial(); } }),
   field("次数 L", segmented([[16, "16"], [24, "24"], [32, "32"]], ax.L, (v) => { ax.L = v; scheduleAxial(); })));
 
-const zz = axialComponents;
 
 // Slider input events can arrive faster than the solves; render at most once per frame.
 const scheduleAxial = frameThrottle(() => renderAxial());
@@ -33,7 +32,7 @@ function renderAxial() {
   const z = [0, 2 * a + ax.g12, 4 * a + ax.g12 + ax.g23];
   const exact = axialManyBody(z, [a, a, a], { L: ax.L, mu, pairCache });
   const X = z.map((zi) => [0, 0, zi]);
-  const rpy = { R: zz(resistance(X)), R2B: zz(pairwiseSumResistance(X)) };
+  const rpy = { R: axialComponents(resistance(X)), R2B: axialComponents(pairwiseSumResistance(X)) };
   const f = [-1, -1, -1];
   const vel = (R) => solve(R, f).map((u) => u * unit); // in units of the isolated settling speed m0 F
   const methods = [
