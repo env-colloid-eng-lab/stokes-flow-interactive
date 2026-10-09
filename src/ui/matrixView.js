@@ -48,11 +48,11 @@ export function createMatrixView(container, opts = {}) {
 
   function build(n) {
     grid.replaceChildren();
-    const small = n > 12;
+    const small = n > 12, tiny = n > 18;
     grid.style.gridTemplateColumns = `auto repeat(${n}, auto)`;
     grid.append(h("div", { class: "head" }));
     for (let j = 0; j < n; j++) {
-      const lab = h("div", { class: "head" + ((j + 1) % block === 0 && j < n - 1 ? " cell block-r" : "") }, small ? "" : labels[j] ?? "");
+      const lab = h("div", { class: "head" + ((j + 1) % block === 0 && j < n - 1 ? " block-r" : "") }, small ? "" : labels[j] ?? "");
       if (!small) lab.style.width = "46px";
       grid.append(lab);
     }
@@ -61,7 +61,7 @@ export function createMatrixView(container, opts = {}) {
       grid.append(h("div", { class: "head", style: { paddingRight: "4px" } }, small && i % block ? "" : labels[i] ?? ""));
       const row = [];
       for (let j = 0; j < n; j++) {
-        let cls = "cell" + (small ? " small" : "");
+        let cls = "cell" + (small ? " small" : "") + (tiny ? " tiny" : "");
         if ((j + 1) % block === 0 && j < n - 1) cls += " block-r";
         if ((i + 1) % block === 0 && i < n - 1) cls += " block-b";
         const c = h("div", { class: cls, role: "gridcell", tabindex: small ? -1 : 0 });
@@ -92,6 +92,10 @@ export function createMatrixView(container, opts = {}) {
     // Rebuilding replaces the cells, which would swallow clicks and focus during animation,
     // so only rebuild when the structure really changes.
     if (!M || M.length !== n || labelsChanged) build(n);
+    // a selection or hover from a larger matrix no longer exists
+    const inside = (ij) => ij && ij[0] < n && ij[1] < n;
+    if (!inside(selected)) selected = null;
+    if (!inside(hover)) hover = null;
     M = matrix;
     vmax = fixedMax ?? Math.max(...matrix.flat().map(Math.abs));
     const pal = readPalette();

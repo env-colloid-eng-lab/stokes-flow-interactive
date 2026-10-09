@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>多体：R は二体の和ではない</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/many-body.js"></script>
+</head>
+<body>
+<main>
+  <h1>10. 多体：R は二体の和ではない</h1>
+  <p class="lead">粒子が三つ以上になると、二球 1・2 の間の抵抗 $R_{12}$ は、離れた場所にある球 3 の位置にも依存する。移動度行列は二体の寄与を足し合わせたものなのに、その逆行列である抵抗行列はそうならない。その理由と大きさを、厳密解と沈降の計算で確かめる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>逆行列が第三の粒子を混ぜる</h2>
+  <div class="prose">
+    <p>RPY や Oseen の移動度は、ブロック $M_{\alpha\beta}$ が粒子 $\alpha,\beta$ の位置だけで決まる（二体の和）。孤立球の部分を $M_0=m_0I$、相互作用の部分を $M'$ と分けて逆行列を展開すると</p>
+    $$R=(M_0+M')^{-1}=R_0-R_0M'R_0+R_0M'R_0M'R_0-\cdots,\qquad R_0=M_0^{-1}=6\pi\mu a\,I$$
+    <p>となる。三つ目の項の $(1,2)$ ブロックには $M'_{13}M'_{32}$ が含まれる。球 1 の流れが球 3 で反射して球 2 に届く経路である。これが「多体の反射」で、$R_{12}$ が球 3 の位置に依存する理由になる。</p>
+    <p>どれだけ二体の和からずれるかを測るため、孤立した二球の抵抗 $R^{(\alpha\beta)}$ を足し合わせた行列を作る。</p>
+    $$R^{2B}_{\alpha\alpha}=R_0+\sum_{\gamma\ne\alpha}\left(R^{(\alpha\gamma)}_{\alpha\alpha}-R_0\right),\qquad R^{2B}_{\alpha\beta}=R^{(\alpha\beta)}_{\alpha\beta}$$
+    <p>差 $R-R^{2B}$ が、三体以上を経由する寄与である。二球だけなら差はゼロになる。</p>
+  </div>
+
+  <h2>同軸の三球：厳密解で確かめる</h2>
+  <p class="prose">中心線上に並んだ三球が中心線方向に動く問題は、境界条件解法（<a href="pair-approach.html">9.</a>）で厳密に解ける。三球を同時に解いた $R$ と、同じ方法で解いた二球の結果から作った $R^{2B}$ を比べる。</p>
+  <div class="controls" id="axial-controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>配置</h3>
+      <div id="axial-scene"></div>
+      <p class="caption">中心線は鉛直。三球に同じ下向きの力を加えたときの速度も下の表に示す。</p>
+    </div>
+    <div class="card">
+      <h3>抵抗 $R/(6\pi\mu a)$（中心線方向）</h3>
+      <div id="axial-tables"></div>
+      <p class="caption" id="axial-note"></p>
+    </div>
+  </div>
+
+  <h2>沈降させる：成分が時間とともに変わる</h2>
+  <div class="controls" id="sed-controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>配置と軌跡</h3>
+      <div id="sed-scene"></div>
+      <div class="controls" id="sed-anim"></div>
+      <p class="caption" id="sed-note"></p>
+    </div>
+    <div class="card">
+      <h3 id="sed-matrix-title">抵抗行列</h3>
+      <div class="controls" id="sed-matrix-controls"></div>
+      <div id="sed-matrix"></div>
+    </div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h3>選んだ成分の時間変化</h3>
+      <div id="sed-series"></div>
+      <p class="caption">実線は $R$、破線は二体の和 $R^{2B}$、点線はその差。配置が変わるたびに、差（多体の寄与）も変わる。</p>
+    </div>
+    <div class="card">
+      <h3>移動度行列の固有値</h3>
+      <div id="sed-eigen"></div>
+      <p class="caption">最小・最大固有値（$6\pi\mu a$ 倍）。最小値が正であることが散逸の正値性に当たる。Oseen 近似で粒子が近づくと、負になることがある（問9.2）。</p>
+    </div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>二体の抵抗を足せば多体の抵抗になる、と考える</strong>移動度は二体の和でも、抵抗は二体の和にならない。標準的なストークス動力学（第14章）は、遠方の多体相互作用を移動度の逆行列で扱い、近接の二体補正だけを足す。二体補正から遠方の寄与を引いて二重計上を避けるのもそのためである。</div>
+  <div class="pitfall"><strong>近似の多体行列を「厳密」と呼ぶ</strong>RPY の逆行列も多体の反射を含むが、それは RPY という近似の範囲での反射である。同軸三球の表で、RPY の差と厳密解の差を比べてみよう。</div>
+</main>
+</body>
+</html>
