@@ -2,11 +2,11 @@ import { initPage, h, segmented, slider, fmt } from "../ui/page.js";
 import { createMatrixView } from "../ui/matrixView.js";
 import { createPlot } from "../ui/plot.js";
 import { createScene } from "../ui/scene2d.js";
-import { solve, sub, eigvalsSym, vsub, norm } from "../core/linalg.js";
+import { solve, sub, eigvalsSym, vsub, norm, matvec } from "../core/linalg.js";
 import { mulberry32 } from "../core/random.js";
-import { mobility, mobilityVelocity } from "../physics/rpy.js";
+import { mobility, mobilityVelocity, flatten, unflatten } from "../physics/rpy.js";
 import { heunStep } from "../physics/integrate.js";
-import { resistance, pairwiseSumResistance, axialManyBody } from "../models/manyBody.js";
+import { resistance, pairwiseSumResistance, axialManyBody, invertMobility } from "../models/manyBody.js";
 
 initPage("p10");
 
@@ -19,16 +19,26 @@ const unit = 6 * Math.PI * mu * a;
 const ax = { g12: 1, g23: 1, L: 24 };
 const axialScene = createScene(document.getElementById("axial-scene"), { width: 300, height: 340 });
 document.getElementById("axial-controls").append(
-  slider({ label: "隙間 h₁₂/a", min: 0.2, max: 4, step: 0.1, value: ax.g12, format: (v) => v.toFixed(1), onInput: (v) => { ax.g12 = v; renderAxial(); } }),
-  slider({ label: "隙間 h₂₃/a", min: 0.2, max: 4, step: 0.1, value: ax.g23, format: (v) => v.toFixed(1), onInput: (v) => { ax.g23 = v; renderAxial(); } }),
-  h("label", {}, "次数 L", segmented([[16, "16"], [24, "24"], [32, "32"]], ax.L, (v) => { ax.L = v; renderAxial(); })));
+  slider({ label: "隙間 h₁₂/a", min: 0.2, max: 4, step: 0.1, value: ax.g12, format: (v) => v.toFixed(1), onInput: (v) => { ax.g12 = v; scheduleAxial(); } }),
+  slider({ label: "隙間 h₂₃/a", min: 0.2, max: 4, step: 0.1, value: ax.g23, format: (v) => v.toFixed(1), onInput: (v) => { ax.g23 = v; scheduleAxial(); } }),
+  h("label", {}, "次数 L", segmented([[16, "16"], [24, "24"], [32, "32"]], ax.L, (v) => { ax.L = v; scheduleAxial(); })));
 
 // 3x3 axial blocks (zz components) of a 9x9 translational matrix
 const zz = (R) => [2, 5, 8].map((i) => [2, 5, 8].map((j) => R[i][j]));
 
+// Slider input events can arrive faster than the solves; render at most once per frame.
+let axialPending = false;
+function scheduleAxial() {
+  if (axialPending) return;
+  axialPending = true;
+  requestAnimationFrame(() => { axialPending = false; renderAxial(); });
+}
+const pairCache = new Map(); // two-body solutions depend only on the gap and L
+
 function renderAxial() {
   const z = [0, 2 * a + ax.g12, 4 * a + ax.g12 + ax.g23];
-  const exact = axialManyBody(z, [a, a, a], { L: ax.L, mu });
+  if (pairCache.size > 500) pairCache.clear();
+  const exact = axialManyBody(z, [a, a, a], { L: ax.L, mu, pairCache });
   const X = z.map((zi) => [0, 0, zi]);
   const rpy = { R: zz(resistance(X)), R2B: zz(pairwiseSumResistance(X)) };
   const f = [-1, -1, -1];
@@ -36,7 +46,7 @@ function renderAxial() {
   const methods = [
     { name: "厳密（境界条件解法）", R: exact.R, R2B: exact.R2B },
     { name: "RPY の逆行列", R: rpy.R, R2B: rpy.R2B },
-  ];
+  ].map((m) => ({ ...m, U: vel(m.R), U2B: vel(m.R2B) }));
   const entries = [["R₁₁", 0, 0], ["R₂₂", 1, 1], ["R₁₂", 0, 1], ["R₁₃", 0, 2]];
   const table = h("table", { class: "data" },
     h("tr", {}, h("th", {}, ""), ...methods.flatMap((m) => [h("th", {}, `${m.name}：R`), h("th", {}, "R²ᴮ"), h("th", {}, "差")])));
@@ -48,7 +58,7 @@ function renderAxial() {
   const vtable = h("table", { class: "data", style: { marginTop: "10px" } },
     h("tr", {}, h("th", {}, "沈降速度 U/(m₀F)"), ...methods.flatMap((m) => [h("th", {}, `${m.name}：R`), h("th", {}, "R²ᴮ")])));
   for (let k = 0; k < 3; k++)
-    vtable.append(h("tr", {}, h("td", {}, `球 ${k + 1}`), ...methods.flatMap((m) => [h("td", {}, fmt(-vel(m.R)[k])), h("td", {}, fmt(-vel(m.R2B)[k]))])));
+    vtable.append(h("tr", {}, h("td", {}, `球 ${k + 1}`), ...methods.flatMap((m) => [h("td", {}, fmt(-m.U[k])), h("td", {}, fmt(-m.U2B[k]))])));
   document.getElementById("axial-tables").replaceChildren(h("div", { style: { overflowX: "auto" } }, table, vtable));
 
   const shield = exact.R[0][2] / exact.R2B[0][2];
@@ -99,7 +109,7 @@ function resetSed() {
 const sc = document.getElementById("sed-controls");
 sc.append(
   h("label", {}, "配置", segmented(Object.entries(SCEN).map(([k, s]) => [k, s.name]), sed.scen, (v) => { sed.scen = v; resetSed(); })),
-  h("label", {}, "近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], sed.model, (v) => { sed.model = v; sed.hist = []; renderSed(); })));
+  h("label", {}, "近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], sed.model, (v) => { sed.model = v; resetSed(); })));
 document.getElementById("sed-matrix-controls").append(
   h("label", {}, "表示", segmented([["R", "R"], ["R2B", "二体の和 R²ᴮ"], ["diff", "差 R − R²ᴮ"]], sed.show, (v) => { sed.show = v; renderSed(); })));
 
@@ -116,16 +126,27 @@ document.getElementById("sed-anim").append(playBtn, h("button", { class: "action
 
 const force = () => sed.X.map(() => [0, 0, -1]);
 function startSed() {
-  if (sed.stopped) return;
+  if (sed.stopped) {
+    document.getElementById("sed-note").textContent = `${sed.stopped} 続けるには「リセット」を押す。`;
+    return;
+  }
   playBtn.textContent = "停止";
   let last = performance.now();
   const step = (now) => {
     const wall = Math.min(0.05, (now - last) / 1000);
     last = now;
-    advanceSed(30 * wall);
-    const c = compute(); // once per frame
-    record(c);
-    renderSed(c);
+    try {
+      advanceSed(30 * wall);
+      const c = compute(); // once per frame
+      record(c);
+      renderSed(c);
+    } catch (err) {
+      // e.g. a singular Oseen mobility: stop cleanly instead of leaving a dead animation
+      sed.stopped = `計算できなくなったので止めた（${err.message}）。`;
+      stopSed();
+      document.getElementById("sed-note").textContent = sed.stopped;
+      return;
+    }
     if (sed.anim) sed.anim = requestAnimationFrame(step);
   };
   sed.anim = requestAnimationFrame(step);
@@ -147,23 +168,31 @@ function advanceSed(dt) {
   const vfun = (X) => mobilityVelocity(X, force(), { a, mu, model: sed.model });
   const nsub = Math.max(1, Math.ceil(dt / 0.25));
   for (let k = 0; k < nsub; k++) {
-    sed.X = heunStep(sed.X, vfun, dt / nsub);
+    const next = heunStep(sed.X, vfun, dt / nsub);
+    const g = minGap(next);
+    if (g < 0.05) {
+      // keep the last state that was still separated
+      sed.stopped = `球どうしの隙間が ${g > 0 ? g.toPrecision(2) + "a" : "なくなる"}ところまで近づいたので、その手前で止めた。ここから先は近接の扱い（9.）が必要になる。`;
+      stopSed();
+      break;
+    }
+    sed.X = next;
     sed.t += dt / nsub;
   }
   sed.X.forEach((p, i) => { sed.trails[i].push([p[0], p[2]]); if (sed.trails[i].length > 1500) sed.trails[i].shift(); });
-  if (minGap(sed.X) < 0.05) {
-    sed.stopped = "球どうしが隙間 0.05a まで近づいたので止めた。ここから先は近接の扱い（9.）が必要になる。";
-    stopSed();
-  }
 }
 
 let cur = null;
 function compute() {
-  const R = resistance(sed.X, { a, mu, model: sed.model });
+  const M = mobility(sed.X, { a, mu, model: sed.model }); // built once, reused for R, eigenvalues and U
+  const R = invertMobility(M);
   const R2B = pairwiseSumResistance(sed.X, { a, mu, model: sed.model });
-  const ev = eigvalsSym(mobility(sed.X, { a, mu, model: sed.model }));
+  const ev = eigvalsSym(M);
   const scale = (A) => A.map((row) => row.map((v) => v / unit));
-  cur = { R: scale(R), R2B: scale(R2B), diff: scale(sub(R, R2B)), evMin: ev[0] * unit, evMax: ev.at(-1) * unit };
+  cur = {
+    R: scale(R), R2B: scale(R2B), diff: scale(sub(R, R2B)), evMin: ev[0] * unit, evMax: ev.at(-1) * unit,
+    U: unflatten(matvec(M, flatten(force()))),
+  };
   return cur;
 }
 
@@ -193,7 +222,7 @@ function renderSed(c = compute()) {
   const X = sed.X;
   const cx = X.reduce((s, p) => s + p[0], 0) / X.length, cz = X.reduce((s, p) => s + p[2], 0) / X.length;
   const span = Math.max(14, ...X.map((p) => 2 * Math.abs(p[0] - cx) + 6), ...X.map((p) => (2 * Math.abs(p[2] - cz) + 6) * (480 / 360)));
-  const U = mobilityVelocity(X, force(), { a, mu, model: sed.model });
+  const U = c.U;
   const colors = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)"];
   sedScene.draw({
     view: { cx, cz, span },

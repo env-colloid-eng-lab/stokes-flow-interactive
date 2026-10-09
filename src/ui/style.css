@@ -114,6 +114,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   border-radius: 3px; cursor: default; position: relative; color: var(--ink);
 }
 .matrix .cell.small { width: 22px; height: 22px; font-size: 0; }
+.matrix .cell.tiny { width: 17px; height: 17px; }
 .matrix .cell.hl { outline: 2px solid var(--ink); outline-offset: -1px; z-index: 1; }
 .matrix .head { color: var(--muted); font-size: 0.7rem; display: flex; align-items: center; justify-content: center; }
 .matrix .block-r { margin-right: 4px; }

@@ -35,3 +35,14 @@ test("coaxial three spheres: exact resistance is symmetric and differs from the 
   // shielding: the middle sphere changes the 1-3 coupling
   assert.ok(Math.abs(R[0][2] - R2B[0][2]) / Math.abs(R2B[0][2]) > 1e-2);
 });
+
+test("lubrication is only defined on RPY; pair solutions can be cached", async () => {
+  const X = [[0, 0, 0], [2.1, 0, 0]];
+  assert.throws(() => resistance(X, { model: "oseen", lubrication: true }), RangeError);
+  const cache = new Map();
+  const first = axialManyBody([0, 3, 6], [1, 1, 1], { L: 12, pairCache: cache });
+  assert.equal(cache.size, 2); // gaps 3 (twice) and 6
+  const again = axialManyBody([0, 3, 6], [1, 1, 1], { L: 12, pairCache: cache });
+  closeArray(again.R2B, first.R2B, { rtol: 0 });
+  closeArray(first.R2B, axialManyBody([0, 3, 6], [1, 1, 1], { L: 12 }).R2B, { rtol: 1e-12 });
+});
