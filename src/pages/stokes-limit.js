@@ -78,7 +78,10 @@ for (let i = -12; i <= 12; i++)
   }
 const rev = { strain: 6, D: 0, t: 0, frames: null, anim: null };
 const STEPS = 150;
-function recompute() { rev.frames = shearReversal(blob, { strain: rev.strain, steps: STEPS, D: rev.D, seed: 7 }); }
+function recompute() {
+  rev.frames = shearReversal(blob, { strain: rev.strain, steps: STEPS, D: rev.D, seed: 7 });
+  rev.back = rmsDistance(rev.frames.at(-1), blob);
+}
 const tSlider = slider({ label: "時間（前進 → 逆転）", min: 0, max: 2 * STEPS, step: 1, value: 0, format: (v) => (v <= STEPS ? `前進 ${((rev.strain * v) / STEPS).toFixed(1)}` : `逆転 ${((rev.strain * (2 * STEPS - v)) / STEPS).toFixed(1)}`), onInput: (v) => { stopRev(); rev.t = v; renderRev(); } });
 const playRev = h("button", { class: "action", type: "button", onclick: () => (rev.anim ? stopRev() : startRev()) }, "再生");
 document.getElementById("rev-controls").append(
@@ -119,7 +122,7 @@ function renderRev() {
     arrows: [...arrows, { x: 2.8, z: 1.12, vx: forward ? 0.8 : -0.8, vz: 0, color: "var(--ink)", width: 2 }],
     axes: { x: "x", up: "z", out: null },
   });
-  const back = rmsDistance(rev.frames.at(-1), blob);
+  const back = rev.back;
   document.getElementById("rev-out").replaceChildren(h("p", { class: "caption" },
     `上の板の向き：${forward ? "右へ（前進）" : "左へ（逆転）"}。最後まで戻したときの、最初の位置からのずれ（二乗平均）：${fmt(back, 2)}` +
     (rev.D === 0 ? "（丸め誤差だけ。流れの履歴は完全に巻き戻る）" : "（拡散で失われた分は、流れを逆にしても戻らない）")));
@@ -157,8 +160,9 @@ function renderDis() {
 const sphereDis = (() => {
   const Rs = Array.from({ length: 31 }, (_, k) => 10 ** ((3 * k) / 30));
   const tr = (r) => translationField(r, [0, 0, 1]), ro = (r) => rotationField(r, [0, 1, 0]);
+  const low = { nr: 3, nt: 3, np: 6 }; // exact for these two fields (see dissipationIntegral)
   const totT = dissipationIntegral(tr), totR = dissipationIntegral(ro);
-  return { Rs, totT, totR, fT: Rs.map((R) => dissipationIntegral(tr, { R }) / totT), fR: Rs.map((R) => dissipationIntegral(ro, { R }) / totR) };
+  return { Rs, totT, totR, fT: Rs.map((R) => dissipationIntegral(tr, { R, ...low }) / totT), fR: Rs.map((R) => dissipationIntegral(ro, { R, ...low }) / totR) };
 })();
 const disPlot = createPlot(document.getElementById("dis-plot"), { height: 260, xlog: true, xlabel: "半径 R/a", ylabel: "a < r < R での散逸の割合" });
 disPlot.update({
@@ -168,7 +172,7 @@ disPlot.update({
   ],
   ydomain: [0, 1.02], hlines: [{ y: 1 }],
 });
-const at10 = dissipationIntegral((r) => translationField(r, [0, 0, 1]), { R: 10 }) / sphereDis.totT;
+const at10 = sphereDis.fT[sphereDis.Rs.findIndex((R) => Math.abs(R - 10) < 1e-9)];
 document.getElementById("dis-sphere").replaceChildren(h("table", { class: "data" },
   h("tr", {}, h("th", {}, ""), h("th", {}, "流体全体の散逸（数値積分）"), h("th", {}, "球がする仕事率")),
   h("tr", {}, h("td", {}, "並進 U = e_z"), h("td", {}, fmt(sphereDis.totT, 8)), h("td", {}, `6πμaU² = ${fmt(6 * Math.PI, 8)}`)),

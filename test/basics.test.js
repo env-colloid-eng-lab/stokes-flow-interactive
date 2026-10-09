@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { dot, matvec } from "../src/core/linalg.js";
 import { oseen, lapOseen, sphereFlow, fourierStokeslet, projector } from "../src/physics/oseen.js";
 import { rpyPair } from "../src/physics/rpy.js";
-import { translationField, rotationField, surfaceAverage, dissipationDensity, dissipationIntegral, gaussLegendre } from "../src/physics/sphere.js";
+import { translationField, rotationField, surfaceMoments, surfaceAverage, dissipationDensity, dissipationIntegral, gaussLegendre } from "../src/physics/sphere.js";
 import { shearReversal, rmsDistance } from "../src/physics/kinematics.js";
 import { close, closeArray } from "./helpers.js";
 
@@ -18,11 +18,15 @@ test("dissipation: the spin does not dissipate, and the fluid dissipates exactly
   close(dissipationDensity([[0, 1, 0], [0, 0, 0], [0, 0, 0]], 2), 2, { rtol: 1e-15 }); // 2 mu (2 * (1/2)^2)
   const a = 1.3, mu = 0.7, U = [0.3, -0.5, 0.8], Om = [0.4, 0.1, -0.6];
   const U2 = dot(U, U), O2 = dot(Om, Om);
-  close(dissipationIntegral((r) => translationField(r, U, { a, mu }), { a, mu }), 6 * Math.PI * mu * a * U2, { rtol: 1e-11 });
-  close(dissipationIntegral((r) => rotationField(r, Om, { a, mu }), { a, mu }), 8 * Math.PI * mu * a ** 3 * O2, { rtol: 1e-11 });
-  // a finite shell holds only part of it: the translating sphere's dissipation reaches far out
-  const part = dissipationIntegral((r) => translationField(r, U, { a, mu }), { a, mu, R: 10 * a }) / (6 * Math.PI * mu * a * U2);
-  assert.ok(part > 0.85 && part < 0.95, `fraction within 10a was ${part}`);
+  close(dissipationIntegral((r) => translationField(r, U, { a, mu }), { a }), 6 * Math.PI * mu * a * U2, { rtol: 1e-11 });
+  close(dissipationIntegral((r) => rotationField(r, Om, { a, mu }), { a }), 8 * Math.PI * mu * a ** 3 * O2, { rtol: 1e-11 });
+  // a finite shell a < r < R holds the fraction 1 - 3s/2 + s^3 - s^5/2 (translation) and
+  // 1 - s^3 (rotation) of it, s = a/R: the translating sphere's dissipation reaches far out
+  for (const R of [1.5 * a, 4 * a, 10 * a, 300 * a]) {
+    const s = a / R;
+    close(dissipationIntegral((r) => translationField(r, U, { a, mu }), { a, R, nr: 3, nt: 3, np: 6 }) / (6 * Math.PI * mu * a * U2), 1 - 1.5 * s + s ** 3 - s ** 5 / 2, { rtol: 1e-12 });
+    close(dissipationIntegral((r) => rotationField(r, Om, { a, mu }), { a, R }) / (8 * Math.PI * mu * a ** 3 * O2), 1 - s ** 3, { rtol: 1e-12 });
+  }
 });
 
 test("Oseen tensor: twice as fast along the force as across it", () => {
@@ -52,6 +56,14 @@ test("sphere surface: the point force alone averages to U, the dipole makes it u
     const lap = matvec(lapOseen(r, { mu }), f).map((v) => ((a * a) / 6) * v);
     closeArray(Gf(r).map((v, i) => v + lap[i]), U, { rtol: 1e-13 });
   }
+});
+
+test("the singularity construction and the closed-form field agree; force split uses the field's mu", () => {
+  const a = 1.1, mu = 0.6, U = [0.3, 0.2, -0.9];
+  for (const r of [[1.1, 0, 0], [0.5, -1.4, 2], [0, 0, 7]]) closeArray(sphereFlow(r, U, { a, mu }), translationField(r, U, { a, mu }).u, { rtol: 1e-13, atol: 1e-16 });
+  const m = surfaceMoments((r) => translationField(r, U, { a, mu }), { a }); // no mu passed here
+  closeArray(m.Fpressure.map((v, i) => v + m.Fviscous[i]), m.F, { rtol: 1e-13 });
+  closeArray(m.Fviscous, U.map((x) => -4 * Math.PI * mu * a * x), { rtol: 1e-12 });
 });
 
 test("receiver's surface average of the sender's flow is the RPY mobility", () => {

@@ -38,7 +38,7 @@ function renderChannel() {
     lines: [{ x1: -3, z1: H, x2: 3, z2: H, color: "var(--ink)", dash: "0" }, { x1: -3, z1: -H, x2: 3, z2: -H, color: "var(--ink)", dash: "0" }],
     paths: [{ points: Array.from({ length: 41 }, (_, k) => { const z = -H + (2 * H * k) / 40; return [-1.6 + 0.8 * uChannel([0, 0, z])[0], z]; }), color: "var(--muted)" }],
     spheres: [{ x: 0.6, z: zc, a }],
-    arrows: [...arrows, { x: 0.6, z: zc, vx: 0.8 * uc, vz: 0, color: "var(--muted)", width: 1.5 }, { x: 0.6, z: zc, vx: 0.8 * Ufax, vz: 0, color: "var(--c1)", width: 3 }],
+    arrows: [...arrows, { x: 0.6, z: zc, vx: 0.8 * uc, vz: 0, color: "var(--muted)", width: 1.5, offset: 8 }, { x: 0.6, z: zc, vx: 0.8 * Ufax, vz: 0, color: "var(--c1)", width: 3 }],
     axes: { x: "x", up: "z", out: "y⊗" },
   });
   document.getElementById("faxen-out").replaceChildren(h("table", { class: "data" },
@@ -83,7 +83,7 @@ function renderRpy() {
 // ---------------------------------------------------------------------
 const ein = { phi: 0.05 };
 const Es = [[0, 0.5, 0], [0.5, 0, 0], [0, 0, 0]]; // simple shear rate 1: E_xy = 1/2
-const Sxy = surfaceMoments((r) => strainField(r, Es, { a: 1, mu }), { a: 1, mu, nt: 10, np: 20 }).S[0][1];
+const Sxy = surfaceMoments((r) => strainField(r, Es, { a: 1, mu }), { a: 1, nt: 10, np: 20 }).S[0][1];
 const einPlot = createPlot(document.getElementById("einstein-plot"), { height: 260, xlabel: "体積分率 φ", ylabel: "μ_eff / μ" });
 const relVisc = (phi) => (mu + (phi / ((4 * Math.PI) / 3)) * Sxy) / mu;
 document.getElementById("einstein-controls").append(

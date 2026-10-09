@@ -2,7 +2,7 @@ import { initPage, h, field, segmented, slider, fmt, frameThrottle } from "../ui
 import { createPlot } from "../ui/plot.js";
 import { createScene } from "../ui/scene2d.js";
 import { matvec, norm } from "../core/linalg.js";
-import { translationField, rotationField, strainField, surfaceMoments } from "../physics/sphere.js";
+import { translationField, rotationField, strainField, surfaceMoments, sphereRule } from "../physics/sphere.js";
 
 initPage("p6");
 
@@ -26,7 +26,7 @@ const plot = createPlot(document.getElementById("plot"), { width: 960, height: 2
 
 // exact values for each motion (a = mu = 1)
 function exactAndComputed(m, nt, np) {
-  const res = surfaceMoments(MOTIONS[m].field, { a, mu, nt, np });
+  const res = surfaceMoments(MOTIONS[m].field, { a, nt, np });
   if (m === "trans") return { got: res.F[2], exact: -6 * Math.PI, res, label: "F_z（力）", formula: "−6πμa U" };
   if (m === "rot") return { got: res.T[1], exact: -8 * Math.PI, res, label: "T_y（トルク）", formula: "−8πμa³ Ω" };
   return { got: res.S[0][0], exact: (20 * Math.PI) / 3 * 0.5, res, label: "S_xx（ストレスレット）", formula: "(20π/3) μa³ E_xx" };
@@ -48,7 +48,10 @@ function render() {
     const t = matvec(fieldFn(n.map((v) => a * v)).sigma, n);
     tr.push({ x: a * n[0], z: a * n[2], vx: 0.4 * t[0], vz: 0.4 * t[2], color: "var(--c2)", width: 2 });
   }
-  scene.draw({ view: { cx: 0, cz: 0, span: 6.6 }, spheres: [{ x: 0, z: 0, a }], arrows: [...arrows, ...tr] });
+  // quadrature nodes that lie on this cross-section (azimuth 0, and pi when n_phi is even)
+  const nodes = sphereRule(st.nt, st.np).normals.filter((n) => Math.abs(n[1]) < 1e-9)
+    .map((n) => ({ x: a * n[0], z: a * n[2], a: 0.06, fill: "var(--ink)", stroke: "none" }));
+  scene.draw({ view: { cx: 0, cz: 0, span: 6.6 }, spheres: [{ x: 0, z: 0, a }, ...nodes], arrows: [...arrows, ...tr] });
 
   const { got, exact, res, label, formula } = exactAndComputed(m, st.nt, st.np);
   const rows = [

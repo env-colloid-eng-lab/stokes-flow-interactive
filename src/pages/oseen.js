@@ -118,9 +118,10 @@ const decay = createPlot(document.getElementById("decay-plot"), { width: 960, he
 // The point force on a sphere surface
 // ---------------------------------------------------------------------
 const sf = { R: 1 };
+const scheduleSurf = frameThrottle(() => renderSurface());
 const surfPlot = createPlot(document.getElementById("surface-plot"), { height: 280, xlabel: "極角 θ（度）", ylabel: "半径 R の球面上の流速 ÷ U" });
 document.getElementById("surface-controls").append(
-  slider({ label: "評価する球面の半径 R/a", min: 1, max: 4, step: 0.05, value: sf.R, format: (v) => v.toFixed(2), onInput: (v) => { sf.R = v; renderSurface(); } }));
+  slider({ label: "評価する球面の半径 R/a", min: 1, max: 4, step: 0.05, value: sf.R, format: (v) => v.toFixed(2), onInput: (v) => { sf.R = v; scheduleSurf(); } }));
 function renderSurface() {
   const U = [0, 0, 1], f = U.map((v) => 6 * Math.PI * mu * a * v);
   const Gf = (r) => matvec(oseen(r, { mu }), f);
