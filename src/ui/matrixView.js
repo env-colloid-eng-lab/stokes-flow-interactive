@@ -52,7 +52,7 @@ export function createMatrixView(container, opts = {}) {
     grid.style.gridTemplateColumns = `auto repeat(${n}, auto)`;
     grid.append(h("div", { class: "head" }));
     for (let j = 0; j < n; j++) {
-      const lab = h("div", { class: "head" + ((j + 1) % block === 0 && j < n - 1 ? " cell block-r" : "") }, small ? "" : labels[j] ?? "");
+      const lab = h("div", { class: "head" + ((j + 1) % block === 0 && j < n - 1 ? " block-r" : "") }, small ? "" : labels[j] ?? "");
       if (!small) lab.style.width = "46px";
       grid.append(lab);
     }
@@ -65,6 +65,7 @@ export function createMatrixView(container, opts = {}) {
         if ((j + 1) % block === 0 && j < n - 1) cls += " block-r";
         if ((i + 1) % block === 0 && i < n - 1) cls += " block-b";
         const c = h("div", { class: cls, role: "gridcell", tabindex: small ? -1 : 0 });
+        if (n > 18) { c.style.width = "17px"; c.style.height = "17px"; } // keep 24 x 24 inside a card
         c.addEventListener("mouseenter", () => { hover = [i, j]; showExplain(i, j); });
         c.addEventListener("mouseleave", () => { hover = null; if (selected) showExplain(...selected); });
         c.addEventListener("focus", () => showExplain(i, j));
