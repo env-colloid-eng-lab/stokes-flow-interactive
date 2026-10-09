@@ -88,6 +88,8 @@ export function segmented(options, value, onChange) {
     return b;
   });
   wrap.append(...buttons);
+  // reflect a value changed elsewhere; a value not among the options presses none
+  wrap.set = (v) => buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(options[i][0] === v)));
   return wrap;
 }
 

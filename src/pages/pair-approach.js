@@ -51,9 +51,10 @@ controls.append(
 
 const cc = document.getElementById("colloc-controls");
 const collocStatus = h("span", { class: "caption" });
+const collocButton = h("button", { class: "action", type: "button", onclick: () => runCollocation() }, "計算する");
 cc.append(
   h("label", {}, "次数 L", segmented([[16, "16"], [32, "32"], [64, "64"]], state.L, (v) => { state.L = v; })),
-  h("button", { class: "action", type: "button", onclick: runCollocation }, "計算する"), collocStatus);
+  collocButton, collocStatus);
 
 const mc = document.getElementById("motion-controls");
 const tSlider = slider({ label: "時刻", min: 0, max: 1, step: 0.001, value: 0, format: (v) => `t = ${(v * Tmax()).toFixed(1)}`, onInput: (v) => { state.tFrac = v; renderMatrix(); renderGap(); } });
@@ -72,11 +73,15 @@ matrixView.select(0, 3);
 
 // ---------- resistance vs gap ----------
 const hgrid = Array.from({ length: 160 }, (_, i) => 10 ** (-3 + (i * 4) / 159));
+// One cached curve per model, replaced when its parameter (h_c or K) changes.
 const curveCache = new Map();
 function curve(model) {
-  const key = `${model}|${model === "lub" ? state.hc : model === "jo" ? state.K : ""}`;
-  if (!curveCache.has(key)) curveCache.set(key, hgrid.map((hh) => ({ hh, ...relative(model, hh) })));
-  return curveCache.get(key);
+  const key = model === "lub" ? state.hc : model === "jo" ? state.K : "";
+  const hit = curveCache.get(model);
+  if (hit && hit.key === key) return hit.data;
+  const data = hgrid.map((hh) => ({ hh, ...relative(model, hh) }));
+  curveCache.set(model, { key, data });
+  return data;
 }
 function renderResistance() {
   const series = [];
@@ -89,7 +94,11 @@ function renderResistance() {
   resPlot.update({ series, ydomain: [0.5, 2e3], xdomain: [1e-3, 10], vlines: [{ x: state.hc, color: MODELS.lub.color }] });
 }
 
+let collocBusy = false;
 function runCollocation() {
+  if (collocBusy) return; // one solve at a time; a long L = 64 run must not be queued twice
+  collocBusy = true;
+  collocButton.disabled = true;
   collocStatus.textContent = "計算中…";
   setTimeout(() => {
     const L = state.L, rows = [];
@@ -99,6 +108,8 @@ function runCollocation() {
       rows.push({ h: hh, L, value: (res.R[0][0] - res.R[0][1]) / unit, x11: res.R[0][0] / unit, x12: res.R[0][1] / unit, residual: res.boundaryError });
     }
     state.colloc = rows;
+    collocBusy = false;
+    collocButton.disabled = false;
     collocStatus.textContent = `完了（${((performance.now() - t0) / 1000).toFixed(1)} 秒）`;
     renderColloc();
     renderResistance();
@@ -138,7 +149,10 @@ function renderGap() {
   const K = (2 * F) / (3 * Math.PI * mu * a * a);
   series.push({ name: "h_c 以下での主要項 h ∝ e^{−Kt}", color: "var(--muted)", dash: "6 4", width: 1.2, points: lubTail(K) });
   const marks = Object.entries(MODELS).map(([k, m]) => ({ x: Math.min(t, traj[k].ts.at(-1)), y: hAt(k, t).h, color: m.color }));
-  gapPlot.update({ series, points: marks, ydomain: [1e-9, Math.max(5, state.h0 * 1.5)], xdomain: [0, Tmax()], vlines: [{ x: t }] });
+  // lower bound: the decade below the smallest gap reached by any model (at most 1e-9)
+  const hmin = Math.min(...Object.values(traj).flatMap((tr) => tr.hs));
+  const floor = Math.min(1e-9, 10 ** Math.floor(Math.log10(hmin)));
+  gapPlot.update({ series, points: marks, ydomain: [floor, Math.max(5, state.h0 * 1.5)], xdomain: [0, Tmax()], vlines: [{ x: t }] });
   const notes = [];
   if (traj.rpy.stop === "contact") notes.push(`RPY だけでは t ≈ ${traj.rpy.ts.at(-1).toFixed(1)} で接触する（接近速度が h → 0 でも有限）。`);
   if (traj.jo.stop === "series") notes.push(`JO 級数（K = ${state.K}）は h ≈ ${traj.jo.hs.at(-1).toPrecision(2)}a で収束しなくなるので、そこで止めた。`);

@@ -49,11 +49,12 @@ function forces(frame) {
 
 // ---------- controls ----------
 const controls = document.getElementById("controls");
+const forcingSeg = segmented([["sediment", "同じ向き（沈降）"], ["approach", "逆向き（中心線方向）"]], state.forcing, (v) => { state.forcing = v; state.eigenMode = null; render(); });
 const rSlider = slider({ label: "中心間距離 r/a", min: 2.02, max: 12, step: 0.01, value: state.r, format: (v) => v.toFixed(2), onInput: (v) => { state.r = v; render(); } });
 const thSlider = slider({ label: "対の向き θ", min: 0, max: 180, step: 1, value: state.thetaDeg, format: (v) => `${v}°`, onInput: (v) => { state.thetaDeg = v; render(); } });
 controls.append(rSlider, thSlider,
   h("label", {}, "近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], state.kind, (v) => { state.kind = v; render(); })),
-  h("label", {}, "力", segmented([["sediment", "同じ向き（沈降）"], ["approach", "逆向き（中心線方向）"]], state.forcing, (v) => { state.forcing = v; state.eigenMode = null; render(); })));
+  h("label", {}, "力", forcingSeg));
 
 const mctl = document.getElementById("matrix-controls");
 mctl.append(
@@ -86,6 +87,7 @@ function toggle(mode) {
   state.t = 0;
   if (mode === "sediment") { state.forcing = "sediment"; state.eigenMode = null; }
   if (mode === "approach") { state.forcing = "approach"; state.eigenMode = null; }
+  forcingSeg.set(state.eigenMode ? null : state.forcing);
   let last = performance.now();
   const step = (now) => {
     const wall = Math.min(0.05, (now - last) / 1000);
@@ -108,13 +110,14 @@ function reset() {
   stop();
   Object.assign(state, { r: 4, thetaDeg: 30, t: 0, com: [0, 0], trail: [[0, 0]], hist: [], eigenMode: null });
   rSlider.set(state.r); thSlider.set(state.thetaDeg);
+  forcingSeg.set(state.forcing);
   status.textContent = "";
   render();
 }
 
 function advance(wall) {
   const dt = 20 * wall; // simulated time per wall-clock second
-  const c = current();
+  const c = lastC ?? current(); // the state has not moved since the last render
   if (state.mode === "sediment") {
     const U = matvec(c.Mdim, forces(c.frame));
     state.com = [state.com[0] + dt * (U[0] + U[3]) / 2, state.com[1] + dt * (U[2] + U[5]) / 2];
@@ -143,11 +146,12 @@ function record(c) {
   const [i, j] = sel;
   const key = Math.floor(i / 3) === Math.floor(j / 3) ? "self" : "cross";
   state.hist.push({ t: state.t, v: c.shown[i][j], X: c.coeffs.par[key], Y: c.coeffs.perp[key] });
+  if (state.hist.length > 2000) state.hist.shift();
 }
 
 // ---------- explanations ----------
 function explainEntry(i, j, v) {
-  const c = current();
+  const c = lastC ?? current();
   const al = Math.floor(i / 3), be = Math.floor(j / 3), k = i % 3, l = j % 3;
   const key = al === be ? "self" : "cross";
   const P = c.coeffs.par[key], Q = c.coeffs.perp[key];
@@ -186,7 +190,9 @@ function sourceText(key) {
 }
 
 // ---------- rendering ----------
+let lastC = null; // model of the last rendered state, reused by explanations and the next frame
 function render(c = current()) {
+  lastC = c;
   // scene
   const [cx, cz] = state.com;
   const e = c.frame.e;
@@ -276,8 +282,29 @@ function distanceFamily() {
   return fam;
 }
 
+// The table is built once and updated in place: replacing rows every animation frame
+// would swallow clicks (mousedown and mouseup would land on different elements).
+const eigenBox = document.getElementById("eigen");
+const eigenHead = h("th", {});
+const eigenRows = Array.from({ length: 6 }, () => {
+  const cells = [h("td"), h("td"), h("td")];
+  const tr = h("tr", { style: { cursor: "pointer" } }, ...cells);
+  tr.addEventListener("click", () => {
+    const d = +tr.dataset.d, sign = +tr.dataset.sign;
+    const active = state.eigenMode && state.eigenMode.dir === d && state.eigenMode.sign === sign;
+    stop();
+    state.eigenMode = active ? null : { dir: d, sign };
+    forcingSeg.set(state.eigenMode ? null : state.forcing);
+    render();
+  });
+  return { tr, cells };
+});
+const eigenNote = h("p", { class: "caption" });
+eigenBox.append(h("table", { class: "data" },
+  h("tr", {}, h("th", {}, "モード"), h("th", {}, "力の組（球1, 球2）"), eigenHead),
+  ...eigenRows.map((r) => r.tr)), eigenNote);
+
 function renderEigen(c) {
-  const box = document.getElementById("eigen");
   const rows = [];
   for (let d = 0; d < 3; d++)
     for (const sign of [1, -1]) {
@@ -286,17 +313,19 @@ function renderEigen(c) {
       rows.push({ d, sign, lam, label: `${sign > 0 ? "集団" : "相対"}（${DIRS[d]}）` });
     }
   rows.sort((p, q) => p.lam - q.lam);
-  const table = h("table", { class: "data" },
-    h("tr", {}, h("th", {}, "モード"), h("th", {}, "力の組（球1, 球2）"), h("th", {}, state.show === "M" ? "固有値 ×6πμa" : "固有値 ÷6πμa")));
-  for (const row of rows) {
+  eigenHead.textContent = state.show === "M" ? "固有値 ×6πμa" : "固有値 ÷6πμa";
+  rows.forEach((row, k) => {
+    const { tr, cells } = eigenRows[k];
     const active = state.eigenMode && state.eigenMode.dir === row.d && state.eigenMode.sign === row.sign;
-    const tr = h("tr", { style: { cursor: "pointer", background: active ? "var(--accent-soft)" : "" } },
-      h("td", {}, row.label), h("td", {}, row.sign > 0 ? `(${DIRS[row.d]}, ${DIRS[row.d]})` : `(${DIRS[row.d]}, −${DIRS[row.d]})`), h("td", {}, fmt(row.lam)));
-    tr.addEventListener("click", () => { stop(); state.eigenMode = active ? null : { dir: row.d, sign: row.sign }; render(); });
-    table.append(tr);
-  }
+    tr.dataset.d = row.d;
+    tr.dataset.sign = row.sign;
+    tr.style.background = active ? "var(--accent-soft)" : "";
+    cells[0].textContent = row.label;
+    cells[1].textContent = row.sign > 0 ? `(${DIRS[row.d]}, ${DIRS[row.d]})` : `(${DIRS[row.d]}, −${DIRS[row.d]})`;
+    cells[2].textContent = fmt(row.lam);
+  });
   const min = Math.min(...rows.map((r) => r.lam));
-  box.replaceChildren(table, h("p", { class: "caption" }, min > 0 ? "全ての固有値が正（正定値）。" : "負の固有値がある。この近似は散逸の正値性を破っている。"));
+  eigenNote.textContent = min > 0 ? "全ての固有値が正（正定値）。" : "負の固有値がある。この近似は散逸の正値性を破っている。";
 }
 
 render();

@@ -46,7 +46,8 @@ export function createPlot(container, { width = 520, height = 300, xlabel = "", 
     let [x0, x1] = xdomain ?? [Math.min(...all.map((p) => p[0])), Math.max(...all.map((p) => p[0]))];
     let [y0, y1] = ydomain ?? [Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[1]))];
     if (!ydomain && !ylog) { const pad = 0.06 * (y1 - y0 || Math.abs(y1) || 1); y0 -= pad; y1 += pad; }
-    if (y0 === y1) { y0 -= 1; y1 += 1; }
+    if (y0 === y1) { if (ylog) { y0 /= 2; y1 *= 2; } else { y0 -= 1; y1 += 1; } }
+    if (x0 === x1) { if (xlog) { x0 /= 2; x1 *= 2; } else { const d = Math.abs(x0) || 1; x0 -= d; x1 += d; } }
     const fx = xlog ? (x) => (Math.log10(x) - Math.log10(x0)) / (Math.log10(x1) - Math.log10(x0)) : (x) => (x - x0) / (x1 - x0);
     const fy = ylog ? (y) => (Math.log10(y) - Math.log10(y0)) / (Math.log10(y1) - Math.log10(y0)) : (y) => (y - y0) / (y1 - y0);
     const X = (x) => m.l + fx(x) * W, Y = (y) => m.t + (1 - fy(y)) * H;

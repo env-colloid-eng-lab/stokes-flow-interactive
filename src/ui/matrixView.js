@@ -86,9 +86,12 @@ export function createMatrixView(container, opts = {}) {
   }
 
   function update(matrix, { labels: newLabels, vmax: fixedMax } = {}) {
-    if (newLabels) labels = newLabels;
     const n = matrix.length;
-    if (!M || M.length !== n || newLabels) build(n);
+    const labelsChanged = newLabels && (newLabels.length !== labels.length || newLabels.some((x, i) => x !== labels[i]));
+    if (newLabels) labels = newLabels;
+    // Rebuilding replaces the cells, which would swallow clicks and focus during animation,
+    // so only rebuild when the structure really changes.
+    if (!M || M.length !== n || labelsChanged) build(n);
     M = matrix;
     vmax = fixedMax ?? Math.max(...matrix.flat().map(Math.abs));
     const pal = readPalette();
