@@ -1,4 +1,4 @@
-import { initPage, h, tex, segmented, slider, fmt } from "../ui/page.js";
+import { initPage, h, field, tex, segmented, slider, fmt } from "../ui/page.js";
 import { createMatrixView } from "../ui/matrixView.js";
 import { createPlot } from "../ui/plot.js";
 import { createScene } from "../ui/scene2d.js";
@@ -53,13 +53,13 @@ const forcingSeg = segmented([["sediment", "同じ向き（沈降）"], ["approa
 const rSlider = slider({ label: "中心間距離 r/a", min: 2.02, max: 12, step: 0.01, value: state.r, format: (v) => v.toFixed(2), onInput: (v) => { state.r = v; render(); } });
 const thSlider = slider({ label: "対の向き θ", min: 0, max: 180, step: 1, value: state.thetaDeg, format: (v) => `${v}°`, onInput: (v) => { state.thetaDeg = v; render(); } });
 controls.append(rSlider, thSlider,
-  h("label", {}, "近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], state.kind, (v) => { state.kind = v; render(); })),
+  field("近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], state.kind, (v) => { state.kind = v; render(); })),
   h("label", {}, "力", forcingSeg));
 
 const mctl = document.getElementById("matrix-controls");
 mctl.append(
-  h("label", {}, "表示", segmented([["M", "移動度 M"], ["R", "抵抗 R"]], state.show, (v) => { state.show = v; state.hist = []; render(); })),
-  h("label", {}, "座標系", segmented([["lab", "実験室系"], ["pair", "対の局所系"]], state.frame, (v) => { state.frame = v; state.hist = []; render(); })));
+  field("表示", segmented([["M", "移動度 M"], ["R", "抵抗 R"]], state.show, (v) => { state.show = v; state.hist = []; render(); })),
+  field("座標系", segmented([["lab", "実験室系"], ["pair", "対の局所系"]], state.frame, (v) => { state.frame = v; state.hist = []; render(); })));
 
 const scene = createScene(document.getElementById("scene"));
 const matrixView = createMatrixView(document.getElementById("matrix"), {

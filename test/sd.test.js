@@ -4,7 +4,7 @@ import { matmul, transpose, fnorm, sub } from "../src/core/linalg.js";
 import { mulberry32, normalSampler } from "../src/core/random.js";
 import { stf, stf5, unstf5, ddot, naive5, stfBasis } from "../src/physics/stf.js";
 import { schurReduce, fullSolve, sdResistance, isolatedResistance11 } from "../src/models/sd.js";
-import { axialManyBody, resistance, pairwiseSumResistance } from "../src/models/manyBody.js";
+import { axialManyBody, resistance, pairwiseSumResistance, axialComponents } from "../src/models/manyBody.js";
 import { close, closeArray } from "./helpers.js";
 
 const randn = normalSampler(mulberry32(14));
@@ -35,11 +35,14 @@ test("Schur complement reproduces the full solve; induced stresslet vanishes wit
   const decoupled = M.map((r, i) => r.map((v, j) => ((i < nv) !== (j < nv) ? 0 : v)));
   const c = schurReduce(decoupled, nv, { gv, einf: new Array(n - nv).fill(0) });
   assert.ok(Math.hypot(...c.gs) < 1e-14);
+  // background strain alone (no coupling): g_s = -Mss^-1 e_inf, from both routes
+  const d1 = schurReduce(decoupled, nv, { gv, einf }), d2 = fullSolve(decoupled, nv, { gv, einf });
+  closeArray(d1.gs, d2.gs, { rtol: 1e-10, atol: 1e-12 });
+  assert.ok(Math.hypot(...d1.gs) > 1e-3);
   closeArray(isolatedResistance11().map((r, i) => r[i]), [...Array(3).fill(6 * Math.PI), ...Array(3).fill(8 * Math.PI), ...Array(5).fill(20 * Math.PI / 3)], { rtol: 1e-15 });
 });
 
-// axial (zz) components of a 3N x 3N translational matrix
-const zz = (R) => { const idx = Array.from({ length: R.length / 3 }, (_, k) => 3 * k + 2); return idx.map((i) => idx.map((j) => R[i][j])); };
+const zz = axialComponents;
 function axialCase(z) {
   const ex = axialManyBody(z, z.map(() => 1), { L: 24 });
   const X = z.map((v) => [0, 0, v]);

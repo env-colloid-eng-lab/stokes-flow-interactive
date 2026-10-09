@@ -1,11 +1,11 @@
-import { initPage, h, slider, segmented, fmt } from "../ui/page.js";
+import { initPage, h, field, slider, segmented, fmt, frameThrottle } from "../ui/page.js";
 import { createMatrixView } from "../ui/matrixView.js";
 import { createPlot } from "../ui/plot.js";
 import { matmul, transpose, solve } from "../core/linalg.js";
 import { mulberry32, normalSampler } from "../core/random.js";
 import { stf, stf5, ddot, naive5 } from "../physics/stf.js";
 import { schurReduce, fullSolve, sdResistance, isolatedResistance11 } from "../models/sd.js";
-import { axialManyBody, resistance, pairwiseSumResistance } from "../models/manyBody.js";
+import { axialManyBody, resistance, pairwiseSumResistance, axialComponents } from "../models/manyBody.js";
 
 initPage("p11");
 
@@ -75,7 +75,7 @@ const schurView = createMatrixView(document.getElementById("schur-matrix"), {
 });
 document.getElementById("schur-controls").append(
   slider({ label: "結合の強さ ε（M_vs, M_sv に掛ける）", min: 0, max: 1, step: 0.01, value: 1, format: (v) => v.toFixed(2), onInput: (v) => { schur.eps = v; renderSchur(); } }),
-  h("label", {}, "背景のひずみ e∞", segmented([[false, "なし"], [true, "あり"]], schur.einf, (v) => { schur.einf = v; renderSchur(); })));
+  field("背景のひずみ e∞", segmented([[false, "なし"], [true, "あり"]], schur.einf, (v) => { schur.einf = v; renderSchur(); })));
 function renderSchur() {
   const M = coupled();
   const einf = schur.einf ? [0.5, 0, 0.3, 0, 0] : [0, 0, 0, 0, 0];
@@ -87,8 +87,15 @@ function renderSchur() {
     h("table", { class: "data" },
       h("tr", {}, h("th", {}, ""), ...[1, 2, 3, 4, 5].map((k) => h("th", {}, `${k}`))),
       h("tr", {}, h("td", {}, "g_s"), ...red.gs.map((x) => h("td", {}, fmt(x, 3))))),
-    h("p", {}, `|g_s| = ${fmt(gsNorm, 3)}。`, gsNorm < 1e-12 ? "結合がなく背景のひずみもないので、ストレスレットは誘起されない。" : "加えたのは −z 方向の力だけだが、球が変形しないための表面力がストレスレットとして現れる。"),
-    h("p", { class: "caption" }, `Schur 補行列で消去した結果と、元の連立方程式を直接解いた結果の差：最大 ${fmt(diff, 2)}（丸め誤差の範囲）。運動の応答 q_v の z 成分は ${fmt(red.qv[2], 4)}（結合なしなら ${fmt(-M[2][2], 4)}）。`));
+    h("p", {}, `|g_s| = ${fmt(gsNorm, 3)}。`, schurCause(gsNorm)),
+    h("p", { class: "caption" }, `Schur 補行列で消去した結果と、抵抗行列 R = M⁻¹ から別の経路で解いた結果の差：最大 ${fmt(diff, 2)}（丸め誤差の範囲）。運動の応答 q_v の z 成分は ${fmt(red.qv[2], 4)}（結合なしなら ${fmt(-M[2][2], 4)}）。`));
+}
+function schurCause(gsNorm) {
+  if (gsNorm < 1e-12) return "結合がなく背景のひずみもないので、ストレスレットは生じない。";
+  const fromForce = schur.eps > 0, fromStrain = schur.einf;
+  if (fromForce && fromStrain) return "加えた力による誘起分と、背景のひずみに逆らう分の両方がストレスレットとして現れる。";
+  if (fromStrain) return "結合はないが、球が背景のひずみに合わせて変形できないので、それに逆らう表面力がストレスレットとして現れる。";
+  return "加えたのは −z 方向の力だけだが、運動とひずみが結合しているので、球が変形しないための表面力がストレスレットとして現れる。";
 }
 renderSchur();
 
@@ -97,10 +104,8 @@ renderSchur();
 // ---------------------------------------------------------------------
 const sd = { g12: 1, g23: 1, L: 24 };
 const pairCache = new Map();
-// axial (zz) components of a 3N x 3N translational matrix
-const zz = (R) => { const idx = Array.from({ length: R.length / 3 }, (_, k) => 3 * k + 2); return idx.map((i) => idx.map((j) => R[i][j])); };
+const zz = axialComponents;
 function methodsFor(z, L) {
-  if (pairCache.size > 500) pairCache.clear();
   const ex = axialManyBody(z, z.map(() => a), { L, mu, pairCache });
   const X = z.map((v) => [0, 0, v]);
   const Rr = zz(resistance(X, { a, mu })), R2r = zz(pairwiseSumResistance(X, { a, mu }));
@@ -116,12 +121,11 @@ function methodsFor(z, L) {
 }
 const maxErr = (R, Rex) => Math.max(...R.flatMap((row, i) => row.map((v, j) => Math.abs(v - Rex[i][j])))) / Math.abs(Rex[0][0]);
 
-let sdPending = false;
-const scheduleSd = () => { if (!sdPending) { sdPending = true; requestAnimationFrame(() => { sdPending = false; renderSd(); }); } };
+const scheduleSd = frameThrottle(() => renderSd());
 document.getElementById("sd-controls").append(
-  slider({ label: "隙間 h₁₂/a", min: 0.1, max: 4, step: 0.05, value: sd.g12, format: (v) => v.toFixed(2), onInput: (v) => { sd.g12 = v; scheduleSd(); } }),
-  slider({ label: "隙間 h₂₃/a", min: 0.1, max: 4, step: 0.05, value: sd.g23, format: (v) => v.toFixed(2), onInput: (v) => { sd.g23 = v; scheduleSd(); } }),
-  h("label", {}, "次数 L", segmented([[16, "16"], [24, "24"], [32, "32"]], sd.L, (v) => { sd.L = v; scheduleSd(); })));
+  slider({ label: "隙間 h₁₂/a", min: 0.2, max: 4, step: 0.05, value: sd.g12, format: (v) => v.toFixed(2), onInput: (v) => { sd.g12 = v; scheduleSd(); } }),
+  slider({ label: "隙間 h₂₃/a", min: 0.2, max: 4, step: 0.05, value: sd.g23, format: (v) => v.toFixed(2), onInput: (v) => { sd.g23 = v; scheduleSd(); } }),
+  field("次数 L", segmented([[24, "24"], [32, "32"]], sd.L, (v) => { sd.L = v; scheduleSd(); })));
 
 function renderSd() {
   const z = [0, 2 * a + sd.g12, 4 * a + sd.g12 + sd.g23];
@@ -151,23 +155,35 @@ function renderSd() {
 renderSd();
 
 const sdPlot = createPlot(document.getElementById("sd-plot"), { height: 280, xlog: true, ylog: true, xlabel: "隙間 h/a（二つとも同じ）", ylabel: "最大相対誤差" });
+// The scan solves one configuration per task so the page stays responsive and shows progress.
 document.getElementById("sd-scan").addEventListener("click", (ev) => {
   const btn = ev.currentTarget, status = document.getElementById("sd-scan-status");
+  const gaps = [4, 2.5, 1.5, 1, 0.6, 0.4, 0.25, 0.15, 0.1];
+  const colors = ["var(--c1)", "var(--c2)", "var(--c3)"];
+  const names = ["RPY の逆行列（遠方だけ）", "二体の和", "SD 型"];
+  const rows = [];
+  let worstResidual = 0;
   btn.disabled = true;
-  status.textContent = "計算中…";
-  setTimeout(() => {
-    try {
-      const gaps = [4, 2.5, 1.5, 1, 0.6, 0.4, 0.25, 0.15, 0.1];
-      const rows = gaps.map((g) => {
-        const { list } = methodsFor([0, 2 + g, 4 + 2 * g], 32);
-        return { g, errs: list.slice(1).map((m) => maxErr(m.R, list[0].R)) };
-      });
-      const colors = ["var(--c1)", "var(--c2)", "var(--c3)"];
-      const names = ["RPY の逆行列（遠方だけ）", "二体の和", "SD 型"];
-      sdPlot.update({ series: names.map((name, k) => ({ name, color: colors[k], points: rows.map((r) => [r.g, r.errs[k]]) })) });
-      status.textContent = "完了（L = 32）";
-    } finally {
+  const next = (k) => {
+    if (k === gaps.length) {
       btn.disabled = false;
+      status.textContent = `完了（L = 32、基準の境界残差は最大 ${fmt(worstResidual, 2)}）`;
+      return;
     }
-  }, 30);
+    status.textContent = `計算中… ${k + 1}/${gaps.length}`;
+    setTimeout(() => {
+      try {
+        const g = gaps[k];
+        const { residual, list } = methodsFor([0, 2 + g, 4 + 2 * g], 32);
+        worstResidual = Math.max(worstResidual, residual);
+        rows.push({ g, errs: list.slice(1).map((m) => maxErr(m.R, list[0].R)) });
+        sdPlot.update({ series: names.map((name, i) => ({ name, color: colors[i], points: rows.map((r) => [r.g, r.errs[i]]) })) });
+        next(k + 1);
+      } catch (err) {
+        btn.disabled = false;
+        status.textContent = `計算できなかった（${err.message}）`;
+      }
+    }, 0);
+  };
+  next(0);
 });

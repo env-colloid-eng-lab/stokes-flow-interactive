@@ -63,6 +63,7 @@ export function pairwiseSumResistance(X, opts = {}) {
  * pairCache (a Map) may be passed to reuse two-body solutions between calls.
  */
 export function axialManyBody(centers, radii, { L = 16, mu = 1, pairCache = null } = {}) {
+  if (pairCache && pairCache.size > 500) pairCache.clear(); // keep a long slider session bounded
   const full = axialCollocation(centers, radii, { L, mu, withCondition: false });
   let worst = full.boundaryError;
   const pairR = (p, q) => {
@@ -77,4 +78,10 @@ export function axialManyBody(centers, radii, { L = 16, mu = 1, pairCache = null
   };
   const R2B = pairwiseSum(radii.length, 1, pairR, (p) => [[6 * Math.PI * mu * radii[p]]]);
   return { R: full.R, R2B, boundaryError: worst };
+}
+
+// Axial (z) components of a 3N x 3N translational matrix, as an N x N matrix.
+export function axialComponents(R) {
+  const idx = Array.from({ length: R.length / 3 }, (_, k) => 3 * k + 2);
+  return idx.map((i) => idx.map((j) => R[i][j]));
 }

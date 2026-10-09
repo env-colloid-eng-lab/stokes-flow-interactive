@@ -108,3 +108,17 @@ export const fmt = (v, d = 4) => {
   const a = Math.abs(v);
   return a >= 1e4 || a < 1e-3 ? v.toExponential(d - 1) : v.toPrecision(d);
 };
+
+// A caption + control group. Not a <label>: a label around a button group would forward a click
+// on its text to the first button.
+export const field = (text, control) => h("span", { class: "field" }, text, control);
+
+// Run fn at most once per animation frame, however often it is requested.
+export function frameThrottle(fn) {
+  let pending = false;
+  return () => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => { pending = false; fn(); });
+  };
+}

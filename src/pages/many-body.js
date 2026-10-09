@@ -1,4 +1,4 @@
-import { initPage, h, segmented, slider, fmt } from "../ui/page.js";
+import { initPage, h, field, segmented, slider, fmt, frameThrottle } from "../ui/page.js";
 import { createMatrixView } from "../ui/matrixView.js";
 import { createPlot } from "../ui/plot.js";
 import { createScene } from "../ui/scene2d.js";
@@ -6,7 +6,7 @@ import { solve, sub, eigvalsSym, vsub, norm, matvec } from "../core/linalg.js";
 import { mulberry32 } from "../core/random.js";
 import { mobility, mobilityVelocity, flatten, unflatten } from "../physics/rpy.js";
 import { heunStep } from "../physics/integrate.js";
-import { resistance, pairwiseSumResistance, axialManyBody, invertMobility } from "../models/manyBody.js";
+import { resistance, pairwiseSumResistance, axialManyBody, invertMobility, axialComponents } from "../models/manyBody.js";
 
 initPage("p10");
 
@@ -21,23 +21,16 @@ const axialScene = createScene(document.getElementById("axial-scene"), { width: 
 document.getElementById("axial-controls").append(
   slider({ label: "隙間 h₁₂/a", min: 0.2, max: 4, step: 0.1, value: ax.g12, format: (v) => v.toFixed(1), onInput: (v) => { ax.g12 = v; scheduleAxial(); } }),
   slider({ label: "隙間 h₂₃/a", min: 0.2, max: 4, step: 0.1, value: ax.g23, format: (v) => v.toFixed(1), onInput: (v) => { ax.g23 = v; scheduleAxial(); } }),
-  h("label", {}, "次数 L", segmented([[16, "16"], [24, "24"], [32, "32"]], ax.L, (v) => { ax.L = v; scheduleAxial(); })));
+  field("次数 L", segmented([[16, "16"], [24, "24"], [32, "32"]], ax.L, (v) => { ax.L = v; scheduleAxial(); })));
 
-// 3x3 axial blocks (zz components) of a 9x9 translational matrix
-const zz = (R) => [2, 5, 8].map((i) => [2, 5, 8].map((j) => R[i][j]));
+const zz = axialComponents;
 
 // Slider input events can arrive faster than the solves; render at most once per frame.
-let axialPending = false;
-function scheduleAxial() {
-  if (axialPending) return;
-  axialPending = true;
-  requestAnimationFrame(() => { axialPending = false; renderAxial(); });
-}
+const scheduleAxial = frameThrottle(() => renderAxial());
 const pairCache = new Map(); // two-body solutions depend only on the gap and L
 
 function renderAxial() {
   const z = [0, 2 * a + ax.g12, 4 * a + ax.g12 + ax.g23];
-  if (pairCache.size > 500) pairCache.clear();
   const exact = axialManyBody(z, [a, a, a], { L: ax.L, mu, pairCache });
   const X = z.map((zi) => [0, 0, zi]);
   const rpy = { R: zz(resistance(X)), R2B: zz(pairwiseSumResistance(X)) };
@@ -108,10 +101,10 @@ function resetSed() {
 
 const sc = document.getElementById("sed-controls");
 sc.append(
-  h("label", {}, "配置", segmented(Object.entries(SCEN).map(([k, s]) => [k, s.name]), sed.scen, (v) => { sed.scen = v; resetSed(); })),
-  h("label", {}, "近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], sed.model, (v) => { sed.model = v; resetSed(); })));
+  field("配置", segmented(Object.entries(SCEN).map(([k, s]) => [k, s.name]), sed.scen, (v) => { sed.scen = v; resetSed(); })),
+  field("近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], sed.model, (v) => { sed.model = v; resetSed(); })));
 document.getElementById("sed-matrix-controls").append(
-  h("label", {}, "表示", segmented([["R", "R"], ["R2B", "二体の和 R²ᴮ"], ["diff", "差 R − R²ᴮ"]], sed.show, (v) => { sed.show = v; renderSed(); })));
+  field("表示", segmented([["R", "R"], ["R2B", "二体の和 R²ᴮ"], ["diff", "差 R − R²ᴮ"]], sed.show, (v) => { sed.show = v; renderSed(); })));
 
 const sedScene = createScene(document.getElementById("sed-scene"), { width: 480, height: 360 });
 const sedMatrix = createMatrixView(document.getElementById("sed-matrix"), {

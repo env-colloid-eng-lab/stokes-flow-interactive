@@ -1,6 +1,6 @@
 // Pieces of the Stokesian Dynamics construction (chapter 14).
 
-import { solve, matmul, sub, getBlock, zeros, matvec } from "../core/linalg.js";
+import { solve, inv, matmul, sub, getBlock, zeros, matvec } from "../core/linalg.js";
 
 /**
  * Eliminate the rigid-particle constraint with a Schur complement (eq. 14.1).
@@ -14,23 +14,28 @@ export function schurReduce(M, nv, { gv, einf }) {
   const n = M.length, ns = n - nv;
   const Mvv = getBlock(M, 0, 0, nv), Mvs = getBlock(M, 0, nv, nv, ns);
   const Msv = getBlock(M, nv, 0, ns, nv), Mss = getBlock(M, nv, nv, ns);
-  const MssInvMsv = solve(Mss, Msv);
+  // one factorisation of Mss for both right-hand sides
+  const rhs = Msv.map((row, i) => [...row, einf[i]]);
+  const sol = solve(Mss, rhs);
+  const MssInvMsv = sol.map((row) => row.slice(0, nv)), MssInvE = sol.map((row) => row[nv]);
   const reduced = sub(Mvv, matmul(Mvs, MssInvMsv));
-  const MssInvE = solve(Mss, einf);
   const ambient = matvec(Mvs, MssInvE).map((x) => -x);
-  // g_s from the lower row: Msv g_v + Mss g_s = -e_inf
-  const gs = solve(Mss, matvec(Msv, gv).map((x, i) => -x - einf[i]));
+  // lower row: Msv g_v + Mss g_s = -e_inf  =>  g_s = -(Mss^-1 Msv g_v + Mss^-1 e_inf)
+  const gs = matvec(MssInvMsv, gv).map((x, i) => -x - MssInvE[i]);
   const qv = matvec(reduced, gv).map((x, i) => x + ambient[i]);
   return { reduced, ambient, gs, qv };
 }
 
-// Direct solve of the same problem, for comparison: unknowns g_s, q_v.
+// The same problem solved independently through the resistance R = M^-1 (the form SD uses):
+// g = R q with q = (q_v, -e_inf) and g_v given, so
+//   q_v = R_vv^-1 (g_v + R_vs e_inf),   g_s = R_sv q_v - R_ss e_inf.
 export function fullSolve(M, nv, { gv, einf }) {
   const n = M.length, ns = n - nv;
-  const Msv = getBlock(M, nv, 0, ns, nv), Mss = getBlock(M, nv, nv, ns);
-  const gs = solve(Mss, matvec(Msv, gv).map((x, i) => -x - einf[i]));
-  const g = [...gv, ...gs];
-  const qv = matvec(M, g).slice(0, nv);
+  const R = inv(M);
+  const Rvv = getBlock(R, 0, 0, nv), Rvs = getBlock(R, 0, nv, nv, ns);
+  const Rsv = getBlock(R, nv, 0, ns, nv), Rss = getBlock(R, nv, nv, ns);
+  const qv = solve(Rvv, gv.map((g, i) => g + matvec(Rvs, einf)[i]));
+  const gs = matvec(Rsv, qv).map((x, i) => x - matvec(Rss, einf)[i]);
   return { gs, qv };
 }
 
