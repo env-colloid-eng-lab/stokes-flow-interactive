@@ -16,6 +16,16 @@ python3 -m http.server 8000   # または npm run serve
 
 three.js と KaTeX は `vendor/` に固定版を同梱しているので、CDN にもネットワークにも依存しない。
 
+## 公開（GitHub Pages）
+
+リポジトリのルートにある `index.html` をそのまま配信する。ビルドは不要。
+
+1. リポジトリの Settings → Pages を開く。
+2. Build and deployment の Source を「Deploy from a branch」にし、Branch を `main`、フォルダを `/ (root)` にして保存する。
+3. 1〜2 分後に `https://env-colloid-eng-lab.github.io/stokes-flow-interactive/` で公開される。以後は `main` にマージするたびに自動で更新される。
+
+`.nojekyll` を置いているので、Jekyll による変換は行われず、ファイルがそのまま配信される。リポジトリが公開設定なので、サイトも誰でも見られる。
+
 ## テスト
 
 ```bash
