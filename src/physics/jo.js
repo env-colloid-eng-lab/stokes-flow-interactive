@@ -1,69 +1,12 @@
 // Jeffrey-Onishi (1984) axisymmetric resistance X^A. Port of TwoSphereLab.jl.
-// The coefficients are generated from the recurrence, eqs. (3.6)-(3.9), (3.15);
+// The coefficients are generated from the recurrence, eqs. (3.6)-(3.9), (3.15) (in joRecurrence.js);
 // no table is read. Exact mode uses BigInt rationals.
-import { Rational, Q } from "../core/rational.js";
+import { Rational } from "../core/rational.js";
 import { solve } from "../core/linalg.js";
-
-function binomial(n, k) {
-  let r = 1n;
-  for (let i = 1n; i <= BigInt(k); i++) r = (r * (BigInt(n) - BigInt(k) + i)) / i;
-  return r;
-}
-
-// Arithmetic back-ends: exact rationals or Float64.
-const exactOps = {
-  zero: Q(0), one: Q(1),
-  frac: (n, d) => Q(n, d), int: (n) => new Rational(n),
-  add: (a, b) => a.add(b), sub: (a, b) => a.sub(b), mul: (a, b) => a.mul(b),
-};
-const floatOps = {
-  zero: 0, one: 1,
-  frac: (n, d) => n / d, int: (n) => Number(n),
-  add: (a, b) => a + b, sub: (a, b) => a - b, mul: (a, b) => a * b,
-};
+import { joFamilyPolynomials } from "./joRecurrence.js";
 
 // Returns polys[k] = coefficients of f_k(lambda) in increasing powers of lambda, k = 0..K.
-export function joPolynomials(K, { exact = false } = {}) {
-  if (!(Number.isInteger(K) && K >= 0)) throw new RangeError("K must be a nonnegative integer");
-  const T = exact ? exactOps : floatOps;
-  const pc = new Map(), vc = new Map();
-  const choose = (n, s) => T.int(binomial(n + s, n));
-  function P(n, p, q) {
-    if (n < 1 || p < 0 || q < 0) return T.zero;
-    if (p === 0 && q === 0) return n === 1 ? T.one : T.zero;
-    const key = `${n},${p},${q}`;
-    if (pc.has(key)) return pc.get(key);
-    let v = T.zero;
-    for (let s = 1; s <= q; s++) {
-      const c1 = T.frac(n * (2 * n + 1) * (2 * n * s - n - s + 2), 2 * (n + 1) * (2 * s - 1) * (n + s));
-      const c2 = T.frac(n * (2 * n - 1), 2 * (n + 1));
-      const c3 = T.frac(n * (4 * n * n - 1), 2 * (n + 1) * (2 * s + 1));
-      const inner = T.sub(T.sub(T.mul(c1, P(s, q - s, p - n + 1)), T.mul(c2, P(s, q - s, p - n - 1))),
-        T.mul(c3, V(s, q - s - 2, p - n + 1)));
-      v = T.add(v, T.mul(choose(n, s), inner));
-    }
-    pc.set(key, v);
-    return v;
-  }
-  function V(n, p, q) {
-    if (n < 1 || p < 0 || q < 0) return T.zero;
-    if (p === 0 && q === 0) return n === 1 ? T.one : T.zero;
-    const key = `${n},${p},${q}`;
-    if (vc.has(key)) return vc.get(key);
-    let v = P(n, p, q);
-    const fac = T.frac(2 * n, (n + 1) * (2 * n + 3));
-    for (let s = 1; s <= q; s++) v = T.sub(v, T.mul(T.mul(fac, choose(n, s)), P(s, q - s, p - n - 1)));
-    vc.set(key, v);
-    return v;
-  }
-  const polys = [];
-  for (let k = 0; k <= K; k++) {
-    const row = [];
-    for (let q = 0; q <= k; q++) row.push(T.mul(T.int(2n ** BigInt(k)), P(1, k - q, q)));
-    polys.push(row);
-  }
-  return polys;
-}
+export const joPolynomials = (K, opts) => joFamilyPolynomials("XA", K, opts);
 
 const toFloat = (c) => (c instanceof Rational ? c.toNumber() : c);
 export const evalPoly = (coeffs, x) => coeffs.reduceRight((acc, c) => acc * x + toFloat(c), 0);

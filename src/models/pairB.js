@@ -72,6 +72,7 @@ export function rpyMobility12(rvec, { a = 1, mu = 1 } = {}) {
 
 /** Model A and model B scalars at the gap h = r - 2a. */
 export function pairScalarsAtGap(h, model, { a = 1, mu = 1 } = {}) {
+  if (model !== "A" && model !== "B") throw new RangeError(`model must be "A" or "B", got ${model}`);
   if (model === "B") return joScalarsAtGap(h / a);
   return scalarsOf(inv(rpyMobility12([0, 0, 2 * a + h], { a, mu })), { a, mu });
 }

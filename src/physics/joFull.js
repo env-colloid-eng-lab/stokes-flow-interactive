@@ -6,16 +6,20 @@
 // src/data/joLambda1.js) and S(s) is a closed-form function that carries the near-contact
 // singularities (1/xi, ln 1/xi, xi ln 1/xi; xi = s - 2). sigma_m are the series coefficients of S,
 // computed here, so the identity holds exactly for s > 2 whatever S is; S only speeds up the
-// convergence near contact. The leading singular coefficients are those of JO (1984), eqs. (3.19),
-// (4.15)-(4.16), (5.5)-(5.6), (6.9)-(6.10), (7.9)-(7.10), at lambda = 1.
+// convergence near contact. The singular coefficients are those of JO (1984), eqs. (3.19),
+// (4.15)-(4.16), (5.5)-(5.6), (6.9)-(6.10), (7.9)-(7.10), at lambda = 1, except one: for Y^C_12 the
+// printed xi ln(1/xi) coefficient g5 is twice the value the series itself requires. With the printed
+// value the remainder decays like 1/m^2 times a large constant (convergence ~1/K); with g5 = 31/500 it
+// decays like the other nine functions (tested in test/joFull.test.js).
 //
 // Normalisation (JO 1.7): A11 = 6 pi mu a XA11, A12 = 6 pi mu a XA12 (equal spheres), B = 4 pi mu a^2 Y^B,
 // C = 8 pi mu a^3 X^C, Y^C. Forces and torques are those the spheres exert on the fluid.
 import { F, K as KMAX } from "../data/joLambda1.js";
 
-const lnOm = (xi) => Math.log((xi * (4 + xi)) / (2 + xi) ** 2); // ln(1 - 4/s^2)
-const lnRatio = (xi) => Math.log((4 + xi) / xi);                  // ln((s+2)/(s-2))
-const om = (xi) => (xi * (4 + xi)) / (2 + xi) ** 2;               // 1 - 4/s^2
+// 1 - 4/s^2 and its logarithm: the product form keeps digits near contact, log1p far away
+const om = (xi) => (xi < 1 ? (xi * (4 + xi)) / (2 + xi) ** 2 : 1 - 4 / (2 + xi) ** 2);
+const lnOm = (xi) => (xi < 1 ? Math.log(xi) + Math.log1p(xi / 4) - 2 * Math.log1p(xi / 2) : Math.log1p(-4 / (2 + xi) ** 2));
+const lnRatio = (xi) => Math.log1p(4 / xi);                        // ln((s+2)/(s-2))
 
 // series coefficients (powers of 1/s) of the basic singular functions
 const cE2 = (m) => (m >= 2 && m % 2 === 0 ? 2 ** (m + 1) / m : 0); // -ln(1 - 4/s^2)
@@ -43,12 +47,12 @@ export const FUNCTIONS = {
   XC11: ["XC", even, 1, [["C1", 1 / 2]]],
   XC12: ["XC", odd, -1, [["C2", 1 / 4]]],
   YC11: ["YC", even, 1, [["E2", 1 / 5], ["E3", 47 / 250]]],
-  YC12: ["YC", odd, 1, [["O2", 1 / 20], ["O3", 31 / 250]]],
+  YC12: ["YC", odd, 1, [["O2", 1 / 20], ["O3", 31 / 500]]],
 };
 
 // remainder coefficients (c_m - sigma_m), cached per function and order
 const cache = new Map();
-function remainder(name, K) {
+export function remainder(name, K = KMAX) {
   const key = `${name}:${K}`;
   if (cache.has(key)) return cache.get(key);
   const [fam, parity, sign, sing] = FUNCTIONS[name];
@@ -69,7 +73,7 @@ function remainder(name, K) {
 export function joScalarAtGap(name, xi, { K = KMAX, plain = false } = {}) {
   if (!FUNCTIONS[name]) throw new RangeError(`unknown function ${name}`);
   if (!(xi > 0)) throw new RangeError("a positive gap is required (the spheres must not touch)");
-  if (!(K <= KMAX)) throw new RangeError(`at most ${KMAX} terms are available`);
+  if (!(Number.isInteger(K) && K >= 0 && K <= KMAX)) throw new RangeError(`K must be an integer in [0, ${KMAX}]`);
   const s = 2 + xi;
   const [fam, parity, sign, sing] = FUNCTIONS[name];
   let v = 0, p = 1;

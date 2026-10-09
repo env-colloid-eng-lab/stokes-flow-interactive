@@ -4,11 +4,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Q } from "../src/core/rational.js";
-import { inv, eigvalsSym, asymmetry, matvec, getBlock } from "../src/core/linalg.js";
+import { inv, eigvalsSym, asymmetry, matvec } from "../src/core/linalg.js";
 import { joAllPolynomials, joAllValues } from "../src/physics/joRecurrence.js";
 import { joPolynomials } from "../src/physics/jo.js";
 import { F as DATA } from "../src/data/joLambda1.js";
-import { joScalar, joScalarAtGap, joScalars, nearContact } from "../src/physics/joFull.js";
+import { joScalar, joScalarAtGap, joScalars, nearContact, remainder, FUNCTIONS } from "../src/physics/joFull.js";
 import { resistance12, scalarsOf, rpyMobility12, pairScalarsAtGap, torqueFree, NAMES } from "../src/models/pairB.js";
 import { mobility } from "../src/physics/rpy.js";
 import { axialCollocation } from "../src/physics/collocation.js";
@@ -56,11 +56,31 @@ test("contact constants agree with JO (1984) tables at lambda = 1", () => {
   close(rest("YB11"), 0.2390, { atol: 1e-4 });
   close(rest("YB12"), -0.0017, { atol: 1e-4 });
   close(rest("YC11"), 0.7028, { atol: 1e-4 });
-  close(rest("YC12"), -0.0274, { atol: 1e-3 }); // the slowest series (see joFull.js)
+  close(rest("YC12"), -0.0274, { atol: 1e-4 });
   // X^C stays finite: (7/8) zeta(3) and -(1/8) zeta(3)
   const z3 = 1.2020569031595942;
   close(joScalarAtGap("XC11", xi), (7 / 8) * z3, { atol: 2e-4 });
   close(joScalarAtGap("XC12", xi), -z3 / 8, { atol: 2e-4 });
+});
+
+test("the singular coefficients make every remainder series converge (tail ~ m^-2 with a small constant)", () => {
+  // A wrong 1/xi or ln coefficient would make r_m 2^-m grow or stay O(1/m); a wrong xi ln xi coefficient
+  // leaves r_m 2^-m m^2 of the order of that error times 4 (YC12 with the printed g5 gives about 0.25).
+  for (const name of Object.keys(FUNCTIONS)) {
+    const r = remainder(name);
+    for (let m = 190; m <= 200; m++) if (r[m] !== 0) assert.ok(Math.abs((r[m] / 2 ** m) * m * m) < 0.1, `${name} m=${m}: ${(r[m] / 2 ** m) * m * m}`);
+  }
+});
+
+test("invalid arguments are rejected", () => {
+  assert.throws(() => joScalarAtGap("XA11", 0.5, { K: -1 }), RangeError);
+  assert.throws(() => joScalarAtGap("XA11", 0.5, { K: 2.5 }), RangeError);
+  assert.throws(() => joScalarAtGap("XA11", 0), RangeError);
+  assert.throws(() => pairScalarsAtGap(0.1, "b"), RangeError);
+  assert.throws(() => joAllPolynomials(1000), RangeError);
+  // far away the functions tend to the isolated-sphere values without NaN or round-off growth
+  close(joScalarAtGap("XA11", 1e160), 1, { rtol: 1e-15 });
+  assert.ok(Math.abs(joScalarAtGap("YC12", 1e8)) < 1e-20);
 });
 
 test("the near-contact form equals the plain series, and X^A matches collocation", () => {
@@ -94,12 +114,10 @@ test("12 x 12 matrices: symmetric, positive definite, and scalars round-trip", (
 });
 
 test("model A eliminating rotation gives the translational RPY inverse used on pages 8-11", () => {
-  const rv = [0.6, -1.1, 2.7];
-  const s = Math.hypot(...rv);
+  const rv = [0.6, -1.1, 2.7]; // |r| = 3 a
   const RA = inv(rpyMobility12(rv));
   const tf = torqueFree(RA), ref = inv(mobility([[0, 0, 0], rv]));
   tf.forEach((row, i) => row.forEach((v, j) => close(v, ref[i][j], { rtol: 1e-10, atol: 1e-12 })));
-  assert.ok(s > 2);
 });
 
 test("far field: the exact self mobility differs from RPY at (a/r)^4, rotation couples with the right sign", () => {
@@ -116,5 +134,4 @@ test("far field: the exact self mobility differs from RPY at (a/r)^4, rotation c
   const expected = [0, -1 / (8 * Math.PI * r * r), 0]; // e_x x e_z = -e_y
   OmA.forEach((v, i) => close(v, expected[i], { rtol: 1e-12, atol: 1e-15 }));
   OmB.forEach((v, i) => close(v, expected[i], { rtol: 0.02, atol: 1e-7 }));
-  assert.ok(getBlock(MB, 0, 0, 3).length === 3);
 });

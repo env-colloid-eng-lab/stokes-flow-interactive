@@ -20,6 +20,14 @@ const gaps = Array.from({ length: 121 }, (_, k) => 10 ** (-3 + (4 * k) / 120));
 const gridA = gaps.map((g) => pairScalarsAtGap(g, "A")), gridB = gaps.map((g) => pairScalarsAtGap(g, "B"));
 const gridPlain = Object.fromEntries(NAMES.map((n) => [n, gaps.map((g) => joScalarAtGap(n, g, { plain: true }))]));
 
+// scalars at the gap chosen with the slider, computed once per gap
+let atGap = null;
+function scalarsAtGap() {
+  if (!atGap || atGap.gap !== st.gap) atGap = { gap: st.gap, A: pairScalarsAtGap(st.gap, "A"), B: pairScalarsAtGap(st.gap, "B"), plain: null };
+  if (st.eval === "plain" && !atGap.plain) atGap.plain = Object.fromEntries(NAMES.map((n) => [n, joScalarAtGap(n, st.gap, { plain: true })]));
+  return atGap;
+}
+
 // ---------------------------------------------------------------------
 // functions of the gap
 // ---------------------------------------------------------------------
@@ -43,9 +51,9 @@ function renderFam() {
 const gapSlider = slider({ label: "すき間 h/a", min: -3, max: 1, step: 0.01, value: Math.log10(st.gap), format: (v) => fmt(10 ** v, 3), onInput: (v) => { st.gap = 10 ** v; scheduleFam(); scheduleMat(); } });
 document.getElementById("gap-controls").append(gapSlider);
 function renderTable() {
-  const A = pairScalarsAtGap(st.gap, "A"), B = pairScalarsAtGap(st.gap, "B");
+  const { A, B, plain } = scalarsAtGap();
   const rows = NAMES.map((n) => {
-    const bv = st.eval === "plain" ? joScalarAtGap(n, st.gap, { plain: true }) : B[n];
+    const bv = st.eval === "plain" ? plain[n] : B[n];
     return h("tr", {}, h("td", {}, n), h("td", {}, fmt(A[n], 4)), h("td", {}, fmt(bv, 4)), h("td", {}, Math.abs(A[n]) > 1e-12 ? fmt(bv / A[n], 3) : "—"));
   });
   document.getElementById("fam-table").replaceChildren(h("table", { class: "data" },
@@ -75,7 +83,8 @@ function normalised(R) {
 }
 function renderMat() {
   const th = (st.theta * Math.PI) / 180, e = [Math.sin(th), 0, Math.cos(th)];
-  const RA = normalised(resistance12(pairScalarsAtGap(st.gap, "A"), e)), RB = normalised(resistance12(pairScalarsAtGap(st.gap, "B"), e));
+  const { A, B } = scalarsAtGap();
+  const RA = normalised(resistance12(A, e)), RB = normalised(resistance12(B, e));
   const RD = RB.map((row, i) => row.map((v, j) => v - RA[i][j]));
   lastMats = { RA, RB, RD, e };
   const M = st.show === "A" ? RA : st.show === "B" ? RB : RD;

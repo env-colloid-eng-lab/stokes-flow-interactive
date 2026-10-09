@@ -1,4 +1,5 @@
 // Jeffrey & Onishi (1984) recurrences for all five families of two-sphere resistance functions.
+// (jo.js uses the X^A family from here.)
 //   XA: axisymmetric translation, eqs. (3.6)-(3.9)
 //   YA, YB: transverse translation, eqs. (4.6)-(4.11) with P = V = delta_1n, Q = 0
 //   YC: transverse rotation, the same recurrences with P = V = 0, Q = delta_1n, eqs. (7.3)-(7.5)
@@ -23,12 +24,17 @@ function binomial(n, k) {
   return r;
 }
 
-// Memoised recursive coefficient tables. `init` selects the starting values of the transverse problem.
+// Indices are packed into one number for the memo keys; every index stays below KEY_BASE when
+// K < MAX_K (checked by the public functions).
+const KEY_BASE = 1024;
+export const MAX_K = 1000;
+
+// Memoised recursive coefficient tables, one family at a time.
 function tables(T) {
   const memo = () => new Map();
-  const key = (n, p, q) => (n * 1024 + p) * 1024 + q;
+  const key = (n, p, q) => (n * KEY_BASE + p) * KEY_BASE + q;
   const bin = memo(), choose = (n, k) => {
-    const kk = n * 1024 + k;
+    const kk = n * KEY_BASE + k;
     if (!bin.has(kk)) bin.set(kk, T.int(binomial(n, k)));
     return bin.get(kk);
   };
@@ -116,28 +122,32 @@ function tables(T) {
   return { PA, transA: transverse("A"), transC: transverse("C"), QC };
 }
 
+const FAMILIES = ["XA", "YA", "YB", "XC", "YC"];
+
 /**
- * f_k(lambda) for k = 0..K as polynomial coefficients (increasing powers of lambda).
- * Returns { XA, YA, YB, XC, YC }, each an array of K+1 coefficient arrays.
+ * f_k(lambda), k = 0..K, of one family as polynomial coefficients (increasing powers of lambda).
+ * Only the recurrences that the family needs are run.
  */
-export function joAllPolynomials(K, { exact = false } = {}) {
-  if (!(Number.isInteger(K) && K >= 0)) throw new RangeError("K must be a nonnegative integer");
+export function joFamilyPolynomials(fam, K, { exact = false } = {}) {
+  if (!FAMILIES.includes(fam)) throw new RangeError(`unknown family ${fam}`);
+  if (!(Number.isInteger(K) && K >= 0 && K < MAX_K)) throw new RangeError(`K must be an integer in [0, ${MAX_K})`);
   const T = exact ? exactOps : floatOps;
   const t = tables(T);
-  const poly = (X, k) => Array.from({ length: k + 1 }, (_, q) => X(1, k - q, q));
-  const scale = (c, f) => c.map((x) => T.mul(x, f));
-  const timesLambda = (c) => [T.zero, ...c];
-  const out = { XA: [], YA: [], YB: [], XC: [], YC: [] };
+  const X = { XA: t.PA, YA: t.transA.P, YB: t.transA.Q, XC: t.QC, YC: t.transC.Q }[fam];
+  const extra = fam === "YB" ? T.int(2) : T.one;  // (5.2) has a factor 2
+  const oddTimesLambda = fam === "XC" || fam === "YC"; // from (6.6) and (7.6)
+  const rows = [];
   for (let k = 0; k <= K; k++) {
-    const two = T.int(2n ** BigInt(k));
-    out.XA.push(scale(poly(t.PA, k), two));                          // (3.15)
-    out.YA.push(scale(poly(t.transA.P, k), two));                    // same form for (4.13)-(4.14)
-    out.YB.push(scale(poly(t.transA.Q, k), T.mul(two, T.int(2))));   // from (5.2)
-    const xc = scale(poly(t.QC, k), two), yc = scale(poly(t.transC.Q, k), two);
-    out.XC.push(k % 2 ? timesLambda(xc) : xc);                       // from (6.6)
-    out.YC.push(k % 2 ? timesLambda(yc) : yc);                       // from (7.6)
+    const f = T.mul(T.int(2n ** BigInt(k)), extra);
+    const row = Array.from({ length: k + 1 }, (_, q) => T.mul(X(1, k - q, q), f));
+    rows.push(oddTimesLambda && k % 2 ? [T.zero, ...row] : row);
   }
-  return out;
+  return rows;
+}
+
+/** All five families: { XA, YA, YB, XC, YC }. */
+export function joAllPolynomials(K, opts) {
+  return Object.fromEntries(FAMILIES.map((f) => [f, joFamilyPolynomials(f, K, opts)]));
 }
 
 // f_k at a given lambda (Float64), k = 0..K.
