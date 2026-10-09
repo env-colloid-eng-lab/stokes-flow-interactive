@@ -80,9 +80,8 @@ export function createPlot(container, { width = 520, height = 300, xlabel = "", 
       const pts = se.points.filter(([x, y]) => ok(x, y));
       if (!pts.length) continue;
       if (se.marker) {
-        // small markers (scatter clouds) are drawn without the outline and may be translucent
-        const small = (se.r ?? 3.2) < 2.5;
-        for (const [x, y] of pts) body.append(s("circle", { cx: X(x), cy: Y(y), r: se.r ?? 3.2, fill: se.color, stroke: small ? "none" : "var(--panel)", "fill-opacity": se.opacity ?? 1 }));
+        // outline: false and opacity < 1 suit dense scatter clouds
+        for (const [x, y] of pts) body.append(s("circle", { cx: X(x), cy: Y(y), r: se.r ?? 3.2, fill: se.color, stroke: se.outline === false ? "none" : "var(--panel)", "fill-opacity": se.opacity ?? 1 }));
       } else {
         // break the polyline at NaN gaps
         let d = "", pen = false;

@@ -1,32 +1,30 @@
-// Mirrors reference/julia/regression_multibody.jl testsets 07 and 08, plus the wrong noise models.
+// Beyond multibody.test.js 07/08 (Cholesky covariance, the M = 1 + z zero-flux check): the wrong
+// noise models, the page's sampler, the hindered-wall model and the relaxing ensemble.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { matmul, transpose, norm } from "../src/core/linalg.js";
+import { matmul, transpose, fnorm, sub } from "../src/core/linalg.js";
 import { mobility } from "../src/physics/rpy.js";
 import { noiseFactor, sampleDisplacements, covariance, hinderedMobility, stepHeights, stationaryDensity, flux } from "../src/physics/brownian.js";
 import { mulberry32, normalSampler } from "../src/core/random.js";
 import { close } from "./helpers.js";
 
-const fro = (A) => Math.sqrt(A.flat().reduce((s, v) => s + v * v, 0));
-const diff = (A, B) => A.map((row, i) => row.map((v, j) => v - B[i][j]));
 const M = mobility([[0, 0, 0], [4, 0, 0]]);
 
-test("Cholesky noise has covariance 2 kBT M dt; the other two do not", () => {
+test("the page's sampler matches 2 kBT M dt; independent and element-wise noise do not", () => {
   const kBT = 1, dt = 0.01;
-  const { mean, C } = covariance(sampleDisplacements(M, { kBT, dt, n: 100000, seed: 3 }));
+  const { C } = covariance(sampleDisplacements(noiseFactor(M), { kBT, dt, n: 20000, seed: 3 }));
   const target = M.map((row) => row.map((v) => 2 * kBT * dt * v));
-  assert.ok(fro(diff(C, target)) / fro(target) < 0.025);
-  assert.ok(norm(mean) < 1e-3);
+  assert.ok(fnorm(sub(C, target)) / fnorm(target) < 0.05);
   const BBt = (m) => { const B = noiseFactor(M, m); return matmul(B, transpose(B)); };
-  assert.ok(fro(diff(BBt("cholesky"), M)) / fro(M) < 1e-14);
-  for (const m of ["independent", "elementwise"]) assert.ok(fro(diff(BBt(m), M)) / fro(M) > 0.05, m);
+  assert.ok(fnorm(sub(BBt("cholesky"), M)) / fnorm(M) < 1e-14);
+  for (const m of ["independent", "elementwise"]) assert.ok(fnorm(sub(BBt(m), M)) / fnorm(M) > 0.05, m);
   // independent noise overestimates the relative diffusion along the line of centres
   const rel = (A) => A[0][0] + A[3][3] - 2 * A[0][3];
   assert.ok(rel(BBt("independent")) > 1.3 * rel(M));
 });
 
 test("zero flux: Boltzmann with the thermal drift, Boltzmann / M without it", () => {
-  // the textbook check: M(z) = 1 + z, kBT = 1, m_b g = 2
+  // M(z) = 1 + z, kBT = 1, m_b g = 2: the flux function itself (the formula check is test 08)
   const mob = { M: (z) => 1 + z, dM: () => 1 };
   const z = 0.7, hh = 1e-6;
   const c = (x) => Math.exp(-2 * x), wrong = (x) => Math.exp(-2 * x) / mob.M(x);

@@ -16,11 +16,13 @@ export function noiseFactor(M, method = "cholesky") {
   throw new RangeError(`unknown method ${method}`);
 }
 
-// n samples of dX at a frozen configuration (no force, no drift).
-export function sampleDisplacements(M, { kBT = 1, dt = 1, n = 1000, method = "cholesky", seed = 1 } = {}) {
-  const B = noiseFactor(M, method), randn = normalSampler(mulberry32(seed));
-  const c = Math.sqrt(2 * kBT * dt);
-  return Array.from({ length: n }, () => matvec(B, M.map(() => randn())).map((v) => c * v));
+// One displacement sqrt(2 kBT dt) B xi for a given noise factor B.
+export const applyNoise = (B, kBT, dt, randn) => matvec(B, B.map(() => randn())).map((v) => Math.sqrt(2 * kBT * dt) * v);
+
+// n samples of dX at a frozen configuration (no force, no drift); B = noiseFactor(M, method).
+export function sampleDisplacements(B, { kBT = 1, dt = 1, n = 1000, seed = 1 } = {}) {
+  const randn = normalSampler(mulberry32(seed));
+  return Array.from({ length: n }, () => applyNoise(B, kBT, dt, randn));
 }
 
 // Sample covariance (about the sample mean).

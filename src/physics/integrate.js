@@ -1,5 +1,5 @@
 // Time stepping for overdamped (inertialess) particle motion, and Brownian increments.
-import { cholesky, matvec } from "../core/linalg.js";
+import { applyNoise, noiseFactor } from "./brownian.js";
 
 const axpy = (X, dt, U) => X.map((x, p) => x.map((xi, k) => xi + dt * U[p][k]));
 
@@ -21,7 +21,5 @@ export function midpointStep(X, vfun, dt) {
 // Uses the Cholesky factor; an element-wise square root of M would be wrong.
 export function brownianIncrement(M, kBT, dt, randn) {
   if (!(kBT >= 0 && dt > 0)) throw new RangeError("kBT >= 0, dt > 0 required");
-  const L = cholesky(M);
-  const xi = M.map(() => randn());
-  return matvec(L, xi).map((v) => Math.sqrt(2 * kBT * dt) * v);
+  return applyNoise(noiseFactor(M, "cholesky"), kBT, dt, randn);
 }
