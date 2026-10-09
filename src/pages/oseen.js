@@ -58,7 +58,7 @@ const sk = { f: 0, r: 2.5, th: 50 };
 const scheduleS = frameThrottle(() => renderStokeslet());
 document.getElementById("stokeslet-controls").append(
   slider({ label: "力 f の向き", min: 0, max: 360, step: 1, value: sk.f, format: (v) => `${v}°`, onInput: (v) => { sk.f = v; scheduleS(); } }),
-  slider({ label: "観測点の距離 r", min: 0.5, max: 5, step: 0.05, value: sk.r, format: (v) => v.toFixed(2), onInput: (v) => { sk.r = v; scheduleS(); } }),
+  slider({ label: "観測点の距離 r", min: 0.5, max: 4.2, step: 0.05, value: sk.r, format: (v) => v.toFixed(2), onInput: (v) => { sk.r = v; scheduleS(); } }),
   slider({ label: "観測点の向き", min: 0, max: 360, step: 1, value: sk.th, format: (v) => `${v}°`, onInput: (v) => { sk.th = v; scheduleS(); } }));
 const sScene = createScene(document.getElementById("stokeslet-scene"), { width: 440, height: 440 });
 const c8 = 8 * Math.PI * mu;
@@ -128,12 +128,13 @@ function renderSurface() {
   const full = (r) => sphereFlow(r, U, { a, mu });
   const ths = Array.from({ length: 91 }, (_, k) => 2 * k);
   const on = (fn, d) => fn(inPlane(deg(d)).map((v) => sf.R * v));
+  const g = ths.map((d) => on(Gf, d)), w = ths.map((d) => on(full, d)); // one evaluation per angle
   surfPlot.update({
     series: [
-      { name: "点力だけ u_z", color: "var(--c1)", points: ths.map((d) => [d, on(Gf, d)[2]]) },
-      { name: "点力だけ u_x", color: "var(--c1)", dash: "5 4", points: ths.map((d) => [d, on(Gf, d)[0]]) },
-      { name: "点力 + 有限サイズの項 u_z", color: "var(--c2)", width: 3, points: ths.map((d) => [d, on(full, d)[2]]) },
-      { name: "点力 + 有限サイズの項 u_x", color: "var(--c2)", dash: "5 4", points: ths.map((d) => [d, on(full, d)[0]]) },
+      { name: "点力だけ u_z", color: "var(--c1)", points: ths.map((d, k) => [d, g[k][2]]) },
+      { name: "点力だけ u_x", color: "var(--c1)", dash: "5 4", points: ths.map((d, k) => [d, g[k][0]]) },
+      { name: "点力 + 有限サイズの項 u_z", color: "var(--c2)", width: 3, points: ths.map((d, k) => [d, w[k][2]]) },
+      { name: "点力 + 有限サイズの項 u_x", color: "var(--c2)", dash: "5 4", points: ths.map((d, k) => [d, w[k][0]]) },
     ],
     hlines: [{ y: 0 }, { y: 1 }], ydomain: [-0.5, 1.6],
   });
@@ -141,7 +142,7 @@ function renderSurface() {
   document.getElementById("surface-out").replaceChildren(h("table", { class: "data" },
     h("tr", {}, h("th", {}, ""), h("th", {}, "球面平均の u_z"), h("th", {}, "u_z の最大 − 最小")),
     h("tr", {}, h("td", {}, "点力だけ"), h("td", {}, fmt(avgG, 6)), h("td", {}, fmt(0.75 / sf.R, 4))),
-    h("tr", {}, h("td", {}, "点力 + 有限サイズの項"), h("td", {}, fmt(avgF, 6)), h("td", {}, fmt(Math.abs(on(full, 0)[2] - on(full, 90)[2]), 4)))),
+    h("tr", {}, h("td", {}, "点力 + 有限サイズの項"), h("td", {}, fmt(avgF, 6)), h("td", {}, fmt(Math.abs(w[0][2] - w[45][2]), 4)))),
     h("p", { class: "caption" }, sf.R === 1 ? "R = a では、有限サイズの項を加えた流れは球面上のどこでも U に一致し、剛体の並進になる。点力だけでも平均は U に等しいが、場所によって速さが違う。" :
       `R = ${sf.R.toFixed(2)}a では、平均はどちらも a/R = ${fmt(1 / sf.R, 4)}。有限サイズの項は平均に寄与せず、R とともに速く消える。`));
 }

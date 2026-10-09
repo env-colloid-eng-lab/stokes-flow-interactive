@@ -17,9 +17,9 @@ test("quadrature weights integrate the solid angle", () => {
 });
 
 test("surface traction gives 6 pi mu a U, 8 pi mu a^3 Omega and 20 pi/3 mu a^3 E", () => {
-  const mt = surfaceMoments((r) => translationField(r, U, { a, mu }), { a, mu });
-  const mr = surfaceMoments((r) => rotationField(r, Om, { a, mu }), { a, mu });
-  const ms = surfaceMoments((r) => strainField(r, E, { a, mu }), { a, mu });
+  const mt = surfaceMoments((r) => translationField(r, U, { a, mu }), { a });
+  const mr = surfaceMoments((r) => rotationField(r, Om, { a, mu }), { a });
+  const ms = surfaceMoments((r) => strainField(r, E, { a, mu }), { a });
   closeArray(mt.F, U.map((x) => -6 * Math.PI * mu * a * x), { rtol: 1e-12 });
   closeArray(mr.T, Om.map((x) => -8 * Math.PI * mu * a ** 3 * x), { rtol: 1e-12 });
   closeArray(ms.S, E.map((row) => row.map((x) => ((20 * Math.PI) / 3) * mu * a ** 3 * x)), { rtol: 1e-12, atol: 1e-14 });
@@ -60,9 +60,9 @@ test("Faxen curvature term and the Einstein coefficient 5/2 from a surface integ
   closeArray(S, faxenStresslet([[0, 0, 0], [0, 0, 0], [0, 0, 0]], lapE, { a: A, mu: M }), { rtol: 1e-12, atol: 1e-14 });
   // Einstein: relative viscosity 1 + 5/2 phi
   const Es = [[0, 0.5, 0], [0.5, 0, 0], [0, 0, 0]];
-  const ms = surfaceMoments((r) => strainField(r, Es, { a: A, mu: M }), { a: A, mu: M, nt: 10, np: 20 });
+  const ms = surfaceMoments((r) => strainField(r, Es, { a: A, mu: M }), { a: A, nt: 10, np: 20 });
   const phi = 0.02, num = phi / ((4 * Math.PI * A ** 3) / 3);
-  close(((M + num * ms.S[0][1]) / M - 1) / phi, 2.5, { rtol: 1e-12 });
+  close((num * ms.S[0][1]) / (2 * M * Es[0][1]) / phi, 2.5, { rtol: 1e-12 });
   // a free sphere (F = 0) in u = u0 + quadratic moves with u0 + a^2/6 lap u
   closeArray(faxenForce([1 + A * A / 6 * -2, 0, 0], [1, 0, 0], [-2, 0, 0], { a: A, mu: M }), [0, 0, 0], { atol: 1e-14 });
 });

@@ -1,4 +1,4 @@
-import { initPage, h, field, segmented, slider, fmt, frameThrottle } from "../ui/page.js";
+import { initPage, h, field, segmented, slider, fmt } from "../ui/page.js";
 import { createPlot } from "../ui/plot.js";
 import { createScene } from "../ui/scene2d.js";
 import { shearReversal, rmsDistance } from "../physics/kinematics.js";
@@ -31,7 +31,7 @@ const unit = (v, units) => {
 };
 const LEN = [[1, "m"], [1e-3, "mm"], [1e-6, "µm"], [1e-9, "nm"]];
 const SPEED = [[1, "m/s"], [1e-3, "mm/s"], [1e-6, "µm/s"], [1e-9, "nm/s"]];
-const TIME = [[1, "s"], [1e-3, "ms"], [1e-6, "µs"], [1e-9, "ns"], [1e-12, "ps"]];
+const TIME = [[1, "s"], [1e-3, "ms"], [1e-6, "µs"], [1e-9, "ns"], [1e-12, "ps"], [1e-15, "fs"]];
 
 let presetSeg, fluidSeg;
 const aSlider = slider({ label: "粒子の半径 a", min: -9, max: 0, step: 0.05, value: Math.log10(re.a), format: (v) => unit(10 ** v, LEN), onInput: (v) => { re.a = 10 ** v; presetSeg.set(null); renderRe(); } });
@@ -172,7 +172,7 @@ disPlot.update({
   ],
   ydomain: [0, 1.02], hlines: [{ y: 1 }],
 });
-const at10 = sphereDis.fT[sphereDis.Rs.findIndex((R) => Math.abs(R - 10) < 1e-9)];
+const at10 = dissipationIntegral((r) => translationField(r, [0, 0, 1]), { R: 10, nr: 3, nt: 3, np: 6 }) / sphereDis.totT;
 document.getElementById("dis-sphere").replaceChildren(h("table", { class: "data" },
   h("tr", {}, h("th", {}, ""), h("th", {}, "流体全体の散逸（数値積分）"), h("th", {}, "球がする仕事率")),
   h("tr", {}, h("td", {}, "並進 U = e_z"), h("td", {}, fmt(sphereDis.totT, 8)), h("td", {}, `6πμaU² = ${fmt(6 * Math.PI, 8)}`)),

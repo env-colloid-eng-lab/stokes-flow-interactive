@@ -85,7 +85,8 @@ const ein = { phi: 0.05 };
 const Es = [[0, 0.5, 0], [0.5, 0, 0], [0, 0, 0]]; // simple shear rate 1: E_xy = 1/2
 const Sxy = surfaceMoments((r) => strainField(r, Es, { a: 1, mu }), { a: 1, nt: 10, np: 20 }).S[0][1];
 const einPlot = createPlot(document.getElementById("einstein-plot"), { height: 260, xlabel: "体積分率 φ", ylabel: "μ_eff / μ" });
-const relVisc = (phi) => (mu + (phi / ((4 * Math.PI) / 3)) * Sxy) / mu;
+// added stress n S_xy over the added viscous stress 2 mu E_xy per unit viscosity
+const relVisc = (phi) => 1 + ((phi / ((4 * Math.PI) / 3)) * Sxy) / (2 * mu * Es[0][1]);
 document.getElementById("einstein-controls").append(
   slider({ label: "体積分率 φ", min: 0, max: 0.1, step: 0.002, value: ein.phi, format: (v) => v.toFixed(3), onInput: (v) => { ein.phi = v; renderEinstein(); } }));
 function renderEinstein() {

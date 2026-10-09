@@ -1,6 +1,6 @@
 // Point-force (Oseen) tensor and its derivatives. Port of StokesLab.jl.
 // Convention: f is the force the particle exerts on the fluid; u = G f.
-import { eye, dot, norm, zeros } from "../core/linalg.js";
+import { eye, dot, norm, zeros, matvec } from "../core/linalg.js";
 
 export const eye3 = () => eye(3);
 
@@ -21,7 +21,7 @@ function check(r, mu) {
 // u = (I - k k^T / k^2) f / (mu k^2) and p = -i (k . f) / k^2. Returns u and the imaginary part of p.
 export function fourierStokeslet(k, f, { mu = 1 } = {}) {
   const P = projector(k), kk = dot(k, k);
-  return { u: P.map((row) => row.reduce((s, v, j) => s + (v * f[j]) / (mu * kk), 0)), pImag: -dot(k, f) / kk };
+  return { u: matvec(P, f).map((v) => v / (mu * kk)), pImag: -dot(k, f) / kk };
 }
 
 // G_ij = (delta_ij / r + r_i r_j / r^3) / (8 pi mu)
