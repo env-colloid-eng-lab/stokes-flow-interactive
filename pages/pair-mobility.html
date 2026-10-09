@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>二球：M から R へ</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/pair-mobility.js"></script>
+</head>
+<body>
+<main>
+  <h1>8. 二球：M から R へ</h1>
+  <p class="lead">二つの球に力を加えると、各球は自分に加えた力だけでなく、相手が押しのけた流れにも運ばれる。速度と力の関係 $\boldsymbol U=M\boldsymbol f$ の移動度行列 $M$ と、その逆の抵抗行列 $R=M^{-1}$（$\boldsymbol f=R\boldsymbol U$）の 36 個の成分が何で決まるのかを、配置を動かしながら確かめる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>成分は二つの理由で変わる</h2>
+  <div class="prose">
+    <p>RPY 近似では、球 1 から球 2 へ向かう単位ベクトルを $\boldsymbol e$、中心間距離を $r$ として、$3\times3$ のブロックは次の形になる（$\boldsymbol f$ は粒子が流体に及ぼす力）。</p>
+    $$M_{11}=M_{22}=m_0 I,\qquad M_{12}=c_\parallel(r)\,\boldsymbol e\boldsymbol e^{\mathsf T}+c_\perp(r)\,(I-\boldsymbol e\boldsymbol e^{\mathsf T}),\qquad m_0=\frac{1}{6\pi\mu a}$$
+    $$c_\parallel=\frac{1}{4\pi\mu r}\left(1-\frac{2a^2}{3r^2}\right),\qquad c_\perp=\frac{1}{8\pi\mu r}\left(1+\frac{2a^2}{3r^2}\right)$$
+    <p>成分で書けば $M_{1k,2l}=c_\parallel e_ke_l+c_\perp(\delta_{kl}-e_ke_l)$ である。成分が変わる理由は二つある。</p>
+    <ul>
+      <li><strong>距離 $r$ が変わる</strong>と、係数 $c_\parallel,c_\perp$ が変わる。</li>
+      <li><strong>対の向き $\boldsymbol e$ が回る</strong>と、係数が同じでも $e_ke_l$ が変わる。これは物理が変わったのではなく、同じテンソルを別の基底で見ているだけである。</li>
+    </ul>
+    <p>対の局所系（$\boldsymbol e$ と、それに垂直な二方向）で見ると、方向ごとに $2\times2$ の問題に分かれ、逆行列も方向ごとに取れる。</p>
+    $$\begin{pmatrix}m_0&c\\ c&m_0\end{pmatrix}^{-1}=\frac{1}{m_0^2-c^2}\begin{pmatrix}m_0&-c\\ -c&m_0\end{pmatrix}$$
+    <p>こうして得た抵抗の係数を $6\pi\mu a$ で割り、中心線方向を $X_{11},X_{12}$、垂直方向を $Y_{11},Y_{12}$ と書く。$R_{1k,2l}=6\pi\mu a\,[X_{12}e_ke_l+Y_{12}(\delta_{kl}-e_ke_l)]$ である。</p>
+  </div>
+
+  <h2>配置を動かして成分を見る</h2>
+  <div class="controls" id="controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>配置・力・速度</h3>
+      <div id="scene"></div>
+      <p class="caption">橙の矢印は加えた力 $\boldsymbol f$、青の矢印は速度 $\boldsymbol U=M\boldsymbol f$（長さは孤立球の速度 $m_0|\boldsymbol f|$ を基準にした相対値）。<span id="scene-note"></span></p>
+      <div class="controls" id="anim"></div>
+    </div>
+    <div class="card">
+      <h3 id="matrix-title">行列</h3>
+      <div class="controls" id="matrix-controls"></div>
+      <div id="matrix"></div>
+    </div>
+  </div>
+
+  <div class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h3>選んだ成分の時間変化</h3>
+      <div id="series"></div>
+      <p class="caption">行列の成分をクリックして選び、下の再生ボタンで動かす。点線は同じブロックの $X$（中心線方向）と $Y$（垂直方向）。実線（実験室系の成分）が変わっても点線が一定なら、変わったのは基底だけである。</p>
+    </div>
+    <div class="card">
+      <h3>距離による係数の変化</h3>
+      <div id="distance"></div>
+      <p class="caption" id="distance-caption"></p>
+    </div>
+  </div>
+
+  <h2>固有モード：独立に応答する運動</h2>
+  <div class="grid two">
+    <div class="card">
+      <div id="eigen"></div>
+      <p class="caption">行をクリックすると、その固有ベクトルを力として加える。速度は力と同じ向きになり、大きさだけが固有値倍される。</p>
+    </div>
+    <div class="prose">
+      <p>同じ向きの力（集団運動）では相手の流れが動きを助け、移動度は $m_0+c$ と大きくなる。逆向きの力（相対運動）では相手の流れが妨げ、$m_0-c$ と小さくなる。抵抗行列の固有値はその逆数になる。</p>
+      <p>相対運動の固有値 $m_0-c_\parallel$ は、球が近づくほど小さくなる。抵抗の側から見ると $1/(m_0-c_\parallel)$ が大きくなる。この発散が本当にどう振る舞うかは、RPY だけでは決まらない。<a href="pair-approach.html">9. 二球が近づくと</a>で厳密解と比べる。</p>
+      <p>全ての固有値が正であることは、流体が受動的でエネルギーを生まないこと（散逸 $\boldsymbol f^{\mathsf T}M\boldsymbol f>0$）の表れである。Oseen 近似に切り替えて球を近づけると、この性質がどこまで保たれるかを確かめられる。</p>
+    </div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>$R_{12}$ は $1/M_{12}$ ではない</strong>逆行列は行列全体で取る。$R_{12}$ には $m_0$ と $c$ の両方が入り、符号も負になる。球 2 を止めたまま球 1 を動かすには、球 1 に押されて動こうとする球 2 を引き止める力が要るからである。</div>
+  <div class="pitfall"><strong>$Y$ は「回転を止めた」抵抗ではない</strong>並進だけの RPY は、トルクをゼロにして球が自由に回る場合の移動度である。その逆行列の $Y$ は、回転を止めた Jeffrey–Onishi の $Y^A$ とは別の量になる。両者の比較は案B（全関数）を追加するときに扱う。</div>
+  <div class="pitfall"><strong>行列の対称性を後から整えない</strong>$M=M^{\mathsf T}$、$R=R^{\mathsf T}$ は相反定理から出る物理的な性質である。数値計算の結果を対称化してから調べると、計算の誤りを隠してしまう。</div>
+</main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "stokes-flow-interactive",
+  "version": "0.1.0",
+  "private": true,
+  "description": "テンソル解析からストークス動力学までを動かして学ぶ教材（静的サイト）",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "vendor": "node scripts/vendor.mjs",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "katex": "0.16.25",
+    "three": "0.180.0"
+  }
+}
