@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>慣性を捨てる</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/stokes-limit.js"></script>
+</head>
+<body>
+<main>
+  <h1>4. 慣性を捨てる</h1>
+  <p class="lead">小さな粒子のまわりの流れでは、流体の慣性は粘性に比べて無視できるほど小さい。慣性の項を落とすと運動方程式は線形になり、流れは「今の力」だけで決まる。このページでは、その近似がどこで成り立つかを見積もり、そこから出てくる二つの性質（可逆性と散逸の正値性）を確かめる。後のページの抵抗行列・移動度行列は、どちらもこの線形性の上に立っている。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>ストークス方程式</h2>
+  <div class="prose">
+    <p>密度 $\rho$、粘度 $\mu$ の非圧縮流体の運動方程式は</p>
+    $$\rho\left(\frac{\partial\boldsymbol u}{\partial t}+\boldsymbol u\cdot\nabla\boldsymbol u\right)=\nabla\cdot\sigma+\boldsymbol f,\qquad \sigma=-pI+2\mu E,\qquad \nabla\cdot\boldsymbol u=0$$
+    <p>である。粒子の大きさ $a$、速さ $U$ で長さと速度を測ると、左辺は右辺の粘性項に比べて $\mathrm{Re}=\rho Ua/\mu$ 倍になる。$\mathrm{Re}\ll1$ ならば左辺を落として</p>
+    $$-\nabla p+\mu\nabla^2\boldsymbol u+\boldsymbol f=\boldsymbol 0,\qquad \nabla\cdot\boldsymbol u=0$$
+    <p>を解けばよい（ストークス方程式）。ここから三つの性質が出てくる。</p>
+    <ul>
+      <li><strong>線形</strong>：力を2倍にすれば流れも2倍、二つの力の流れは足し合わせられる。だから速度と力は行列で結ばれる（$\boldsymbol U=M\boldsymbol f$）。</li>
+      <li><strong>瞬時</strong>：時間微分がないので、流れはその瞬間の境界の位置と速度だけで決まり、過去の履歴を覚えていない。</li>
+      <li><strong>可逆</strong>：力の向きを全部反転すると、流れもそのまま反転する。</li>
+    </ul>
+  </div>
+
+  <h2>レイノルズ数を見積もる</h2>
+  <div class="controls" id="re-controls"></div>
+  <div class="grid two">
+    <div class="card"><div id="re-plot"></div><p class="caption">三つの流体での Re を、今の速さ $U$ のまま粒子の半径に対して描いた。黒い点が今の設定、破線が $\mathrm{Re}=1$。</p></div>
+    <div class="card"><div id="re-out"></div></div>
+  </div>
+
+  <h2>流れを逆に回すと元に戻る</h2>
+  <div class="prose">
+    <p>二枚の板の間の単純せん断流 $u_x=\dot\gamma z$ に、色をつけた流体の塊を置く。上の板を右に動かすと塊は引き伸ばされる。同じだけ左に戻すと、ストークス流では塊は元の円に戻る。流れは今の板の位置だけで決まるので、板の動きを逆にたどれば、流体の各点も同じ道を逆にたどる。ただし、分子の熱運動による拡散（ブラウン運動）は逆にたどれない。</p>
+  </div>
+  <div class="controls" id="rev-controls"></div>
+  <div class="card">
+    <div id="rev-scene"></div>
+    <div id="rev-out"></div>
+    <p class="caption">板の間隔を $2L$ とし、長さを $L$、時間を $1/\dot\gamma$ で測る。青と橙は、最初に塊の左半分と右半分にあった点。左の灰色の矢印は今の流速。</p>
+  </div>
+
+  <h2>散逸は必ず正</h2>
+  <div class="prose">
+    <p>粘性による単位体積当たりのエネルギー散逸は</p>
+    $$\Phi=\sigma:\nabla\boldsymbol u=2\mu E:E\ \ge 0$$
+    <p>である（$\nabla\cdot\boldsymbol u=0$ なので圧力は仕事をしない）。散逸には変形速度 $E$ だけが入り、回転 $W$ は入らない：流体が剛体のように回るだけなら、摩擦は生じない。</p>
+  </div>
+  <div class="controls" id="dis-controls"></div>
+  <div class="card"><div id="dis-out"></div></div>
+
+  <h3>球のまわりで散逸を積分する</h3>
+  <div class="prose">
+    <p>動く球のまわりの流体全体で $\Phi$ を積分すると、球が流体にする仕事率 $\boldsymbol f\cdot\boldsymbol U$ に等しい。多粒子では $\boldsymbol f=R\boldsymbol U$ なので</p>
+    $$\boldsymbol U\cdot R\,\boldsymbol U=\int\Phi\,dV>0\qquad(\boldsymbol U\ne\boldsymbol 0)$$
+    <p>となり、抵抗行列 $R$ は正定値である。その逆行列である移動度行列 $M$ も正定値で、ページ8以降で $R$ の固有値がすべて正になる理由、ページ12で $M$ をブラウン運動の雑音の共分散に使える理由はここにある。</p>
+  </div>
+  <div class="grid two">
+    <div class="card"><div id="dis-plot"></div></div>
+    <div class="card"><div id="dis-sphere"></div></div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>「遅い流れ」だからストークス近似、と考える</strong>判断の基準は速さではなく Re である。同じ 1 mm/s でも、1 µm の粒子なら Re ≈ 10⁻³、1 m の物体なら Re ≈ 10³ になる。</div>
+  <div class="pitfall"><strong>可逆性を「時間を逆にしても同じに見える」と取り違える</strong>ストークス流で逆にたどれるのは、境界の動きを逆にしたときの流体の軌跡である。拡散や、粒子の慣性・衝突などの非線形な効果があると、元には戻らない。</div>
+</main>
+</body>
+</html>

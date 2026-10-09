@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>球の抵抗を積分で得る</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/single-sphere.js"></script>
+</head>
+<body>
+<main>
+  <h1>6. 球の抵抗を積分で得る</h1>
+  <p class="lead">球の表面に働く表面力 $\boldsymbol t=\sigma\boldsymbol n$ を全面で足し合わせると、球が受ける力・トルク・ストレスレットが得られる。並進・回転・伸長の三つの基本的な運動について、その積分を数値で実行し、$6\pi\mu a$、$8\pi\mu a^3$、$\tfrac{20\pi}{3}\mu a^3$ が出てくるところを見る。ページ8以降の自己ブロックの値は、ここで得た係数である。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>表面力のモーメントとして</h2>
+  <div class="prose">
+    <p>半径 $a$ の球の表面で $\boldsymbol r=a\boldsymbol n$、面積要素 $dA=a^2d\Omega$ として</p>
+    $$\boldsymbol F^{\mathrm H}=\int\boldsymbol t\,dA,\qquad \boldsymbol T^{\mathrm H}=\int\boldsymbol r\times\boldsymbol t\,dA,\qquad S=\int\left[\tfrac12(\boldsymbol r\boldsymbol t^{\mathsf T}+\boldsymbol t\boldsymbol r^{\mathsf T})-\tfrac13(\boldsymbol r\cdot\boldsymbol t)I\right]dA$$
+    <p>を求める。力とトルクは表面力分布の 0 次・1 次のモーメント（1 次は反対称部分）、ストレスレットは 1 次のモーメントの対称でトレースのない部分である。結果は</p>
+    $$\boldsymbol F^{\mathrm H}=-6\pi\mu a\boldsymbol U,\qquad \boldsymbol T^{\mathrm H}=-8\pi\mu a^3\boldsymbol\Omega,\qquad S=\tfrac{20\pi}{3}\mu a^3E$$
+    <p>となる。積分は $\cos\theta$ 方向に Gauss–Legendre 則、方位角方向に台形則を使う。この三つの運動では表面力が $\boldsymbol n$ の低次の多項式なので、少ない求積点でも丸め誤差の範囲で厳密な値が出る。点数を減らして確かめてみよう。</p>
+  </div>
+
+  <h2>積分してみる</h2>
+  <div class="controls" id="controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>球のまわりの流れと表面力（x–z 断面）</h3>
+      <div id="scene"></div>
+      <p class="caption">灰色の矢印は流体の速度、橙の矢印は断面上の求積点で流体が球に及ぼす表面力 $\boldsymbol t$。</p>
+    </div>
+    <div class="card">
+      <h3>積分の結果</h3>
+      <div id="result"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>表面力の内訳（x–z 断面に沿って）</h3>
+    <div id="plot"></div>
+    <p class="caption">極角 $\theta$（$z$ 軸から測る）に沿った表面力の $z$ 成分を、圧力の寄与 $-p\boldsymbol n$ と粘性応力の寄与 $\mu(L+L^{\mathsf T})\boldsymbol n$ に分けて描く。並進では、前面（$\theta=0$）で圧力が押し戻し、側面では粘性が引きずる。両者の和はどこでも同じ値になる。</p>
+  </div>
+
+  <h2>三つの結果の読み方</h2>
+  <div class="prose">
+    <ul>
+      <li><strong>並進</strong>：表面力は球面上のどこでも同じ $\boldsymbol t=-\tfrac{3\mu}{2a}\boldsymbol U$ になる。表面積 $4\pi a^2$ を掛けて $-6\pi\mu a\boldsymbol U$。そのうち圧力が $-2\pi\mu a\boldsymbol U$（1/3）、粘性応力が $-4\pi\mu a\boldsymbol U$（2/3）を担う。</li>
+      <li><strong>回転</strong>：圧力は 0 で、表面力は面に沿った向きだけになる。モーメントの腕 $a$ が加わるので、係数は $a^3$ に比例する。</li>
+      <li><strong>伸長</strong>：力もトルクも 0 だが、表面力は $\boldsymbol t=5\mu E\boldsymbol n$ で、1 次のモーメントの対称部分（ストレスレット）が残る。球が流れの変形に逆らうことが、懸濁液の粘度を上げる（ページ7）。</li>
+    </ul>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>流体が粒子に及ぼす力と、粒子が流体に及ぼす力を混同する</strong>$\boldsymbol t=\sigma\boldsymbol n$（$\boldsymbol n$ は粒子から流体へ向く法線）は流体が粒子に及ぼす力なので、$\boldsymbol F^{\mathrm H}=-6\pi\mu a\boldsymbol U$ と負になる。このサイトの $\boldsymbol f$（粒子が流体に及ぼす力）は $\boldsymbol f=-\boldsymbol F^{\mathrm H}=6\pi\mu a\boldsymbol U$ である。</div>
+  <div class="pitfall"><strong>抵抗は全部が粘性によると思う</strong>並進する球の抵抗の 1/3 は圧力の差による。表面の点ごとに見ると、前面で圧力が高く、背面で低い。</div>
+</main>
+</body>
+</html>

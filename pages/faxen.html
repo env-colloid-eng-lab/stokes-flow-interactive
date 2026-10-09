@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Faxén 則と有限サイズ</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/faxen.js"></script>
+</head>
+<body>
+<main>
+  <h1>7. Faxén 則と有限サイズ</h1>
+  <p class="lead">一様でない流れの中に置かれた球は、中心の流速では動かない。球は有限の大きさを持つので、球面全体で流れを「平均」した速度で動く。この補正（Faxén 則）を送り手と受け手の両方に使うと、ページ8の RPY 移動度が得られる。球が流れの変形に逆らうことからは、懸濁液の粘度の式も出てくる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>Faxén の三つの関係</h2>
+  <div class="prose">
+    <p>背景流 $\boldsymbol u^\infty$ の中の剛体球（半径 $a$）について</p>
+    $$\boldsymbol F^{\mathrm H}=-6\pi\mu a\left(\boldsymbol U-\boldsymbol u^\infty-\frac{a^2}{6}\nabla^2\boldsymbol u^\infty\right),\qquad
+    \boldsymbol T^{\mathrm H}=-8\pi\mu a^3\left(\boldsymbol\Omega-\tfrac12\nabla\times\boldsymbol u^\infty\right),\qquad
+    S=\frac{20\pi}{3}\mu a^3\left(E^\infty+\frac{a^2}{10}\nabla^2E^\infty\right)$$
+    <p>（右辺の $\boldsymbol u^\infty$ などは球の中心で評価する）。$\nabla^4\boldsymbol u^\infty=0$ を満たす流れでは、$\boldsymbol u^\infty+\tfrac{a^2}{6}\nabla^2\boldsymbol u^\infty$ は球面上の $\boldsymbol u^\infty$ の平均にちょうど等しい。力のかからない球は、この球面平均の速度で動き、局所の角速度 $\tfrac12\nabla\times\boldsymbol u^\infty$ で回る。</p>
+  </div>
+
+  <h2>放物線の流れの中の球</h2>
+  <div class="controls" id="controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>流路と球（x–z 断面）</h3>
+      <div id="scene"></div>
+      <p class="caption">流れ $u_x=U_0(1-z^2/H^2)$。灰色の矢印は流体の速度。球の中心から出る太い青の矢印は球の速度、その下に重なる細い灰色の矢印は球の中心での流体の速度（差は右の表を参照）。</p>
+    </div>
+    <div class="card">
+      <h3>球の速度と角速度</h3>
+      <div id="faxen-out"></div>
+    </div>
+  </div>
+
+  <h2>送り手と受け手：RPY ができるまで</h2>
+  <div class="prose">
+    <p>球 2 が力 $\boldsymbol f$ を流体に加えると、その流れは $(1+\tfrac{a^2}{6}\nabla^2)G\boldsymbol f$ になる（送り手の有限サイズ）。力のかからない球 1 はその流れの球面平均で動くので、さらに $(1+\tfrac{a^2}{6}\nabla^2)$ が掛かる（受け手の有限サイズ）。$\nabla^4G=0$ を使うと</p>
+    $$M_{12}=\left(1+\frac{a^2}{6}\nabla^2\right)^2G=G+\frac{a^2}{3}\nabla^2G$$
+    <p>となり、これがページ8の RPY 移動度である。下の計算では、球 2 の流れを球 1 の表面で数値的に平均し、RPY の式と比べる。</p>
+  </div>
+  <div class="controls" id="rpy-controls"></div>
+  <div class="card">
+    <div id="rpy-out"></div>
+  </div>
+
+  <h2>希薄な懸濁液の粘度</h2>
+  <div class="prose">
+    <p>単純せん断の中の球は回転しながら、流れの変形 $E$ に逆らうストレスレット $S=\tfrac{20\pi}{3}\mu a^3E$ を持つ。体積分率 $\phi$ の希薄な懸濁液では、単位体積に $\phi/(\tfrac43\pi a^3)$ 個の球があるので、平均応力の増分は $\tfrac52\phi\cdot2\mu E$ となる。これがアインシュタインの粘度式</p>
+    $$\mu_{\mathrm{eff}}=\mu\left(1+\tfrac52\phi\right)$$
+    <p>である。下の値は、ストレスレットを表面力の数値積分から求めて計算している。</p>
+  </div>
+  <div class="controls" id="einstein-controls"></div>
+  <div class="grid two">
+    <div class="card"><div id="einstein-plot"></div></div>
+    <div class="card"><div id="einstein-out"></div></div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>球は中心の流速で流される、と思う</strong>流れが曲がっていると、球は球面平均の速度で動く。放物線の流れでは $\nabla^2u_x&lt;0$ なので、球は中心の流体より遅れる。球が大きいほど遅れは大きい。</div>
+  <div class="pitfall"><strong>アインシュタインの式を濃い懸濁液に使う</strong>$1+\tfrac52\phi$ は、粒子どうしの流体相互作用を無視した、$\phi$ の一次までの結果である。粒子が近づくと、ページ8〜10の多体の効果が効いてくる。</div>
+</main>
+</body>
+</html>

@@ -17,6 +17,13 @@ function check(r, mu) {
   return R;
 }
 
+// Point force in Fourier space: -i k p + (-mu k^2) u + f = 0 with k . u = 0 gives
+// u = (I - k k^T / k^2) f / (mu k^2) and p = -i (k . f) / k^2. Returns u and the imaginary part of p.
+export function fourierStokeslet(k, f, { mu = 1 } = {}) {
+  const P = projector(k), kk = dot(k, k);
+  return { u: P.map((row) => row.reduce((s, v, j) => s + (v * f[j]) / (mu * kk), 0)), pImag: -dot(k, f) / kk };
+}
+
 // G_ij = (delta_ij / r + r_i r_j / r^3) / (8 pi mu)
 export function oseen(r, { mu = 1 } = {}) {
   const R = check(r, mu);
@@ -62,7 +69,7 @@ export function dipole(r, D, { mu = 1 } = {}) {
 
 // Flow outside a sphere translating with U: (G + a^2/6 nabla^2 G)(6 pi mu a U).
 export function sphereFlow(r, U, { a = 1, mu = 1 } = {}) {
-  if (!(a > 0 && norm(r) >= a)) throw new RangeError("r must be outside sphere");
+  if (!(a > 0 && norm(r) >= a * (1 - 1e-12))) throw new RangeError("r must be outside sphere"); // allow rounding on the surface
   const G = oseen(r, { mu }), L = lapOseen(r, { mu });
   const f = U.map((u) => 6 * Math.PI * mu * a * u);
   return [0, 1, 2].map((i) => [0, 1, 2].reduce((s, j) => s + (G[i][j] + (a * a / 6) * L[i][j]) * f[j], 0));

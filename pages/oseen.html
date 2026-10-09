@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>点力とオゼーンテンソル</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/oseen.js"></script>
+</head>
+<body>
+<main>
+  <h1>5. 点力とオゼーンテンソル</h1>
+  <p class="lead">流体中の一点に力 $\boldsymbol f$ を加えたときの流れ $\boldsymbol u=G\boldsymbol f$ が、ストークス流のすべての計算の部品になる。ストークス方程式は線形なので、粒子が流体に加える力をこの点力の重ね合わせで表せば、流れも重ね合わせで書ける。$G$ がどこから来るか（フーリエ空間での射影）、どんな形か（$1/r$ で減衰する対称テンソル）、球の大きさをどう取り込むか、の三つを見る。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>フーリエ空間では射影になる</h2>
+  <div class="prose">
+    <p>原点に点力 $\boldsymbol f\delta(\boldsymbol x)$ を置いたストークス方程式 $-\nabla p+\mu\nabla^2\boldsymbol u+\boldsymbol f\delta=\boldsymbol 0$、$\nabla\cdot\boldsymbol u=0$ をフーリエ変換すると、微分は $i\boldsymbol k$ を掛ける操作になり</p>
+    $$-i\boldsymbol k\hat p-\mu k^2\hat{\boldsymbol u}+\boldsymbol f=\boldsymbol 0,\qquad \boldsymbol k\cdot\hat{\boldsymbol u}=0$$
+    <p>という代数方程式になる。$\boldsymbol k$ との内積を取ると圧力が決まり、残りから</p>
+    $$\hat{\boldsymbol u}=\frac{1}{\mu k^2}\left(I-\hat{\boldsymbol k}\hat{\boldsymbol k}\right)\boldsymbol f,\qquad \hat p=-\frac{i\,\boldsymbol k\cdot\boldsymbol f}{k^2}$$
+    <p>を得る。力のうち $\boldsymbol k$ に平行な部分は圧力勾配が打ち消し、垂直な部分だけが流れになる。$I-\hat{\boldsymbol k}\hat{\boldsymbol k}$ は、ページ1で見た射影テンソルである。</p>
+  </div>
+  <div class="controls" id="fourier-controls"></div>
+  <div class="grid side">
+    <div class="card"><div id="fourier-scene"></div><p class="caption">破線は一つのフーリエ成分の波面（$\boldsymbol k$ に垂直）。黒が力 $\boldsymbol f$、橙が圧力の受け持つ $\boldsymbol k$ 方向の部分、青が流れになる部分 $\mu k^2\hat{\boldsymbol u}$。</p></div>
+    <div class="card"><div id="fourier-out"></div></div>
+  </div>
+
+  <h2>実空間のオゼーンテンソル</h2>
+  <div class="prose">
+    <p>逆変換すると（$\int e^{i\boldsymbol k\cdot\boldsymbol x}k^{-2}d^3k/(2\pi)^3=1/(4\pi r)$ を使う）</p>
+    $$G_{ij}(\boldsymbol r)=\frac{1}{8\pi\mu}\left(\frac{\delta_{ij}}{r}+\frac{r_ir_j}{r^3}\right),\qquad p=\frac{\boldsymbol f\cdot\boldsymbol r}{4\pi r^3}$$
+    <p>になる。$G$ は対称テンソルで、主軸は観測点の向き $\hat{\boldsymbol r}$ とそれに垂直な二方向、主値は $2/(8\pi\mu r)$ と $1/(8\pi\mu r)$ である。$1/r$ でしか減衰しないので、遠く離れた粒子どうしも互いの流れを感じる。これが多体問題を難しくする（ページ10）。</p>
+  </div>
+  <div class="controls" id="stokeslet-controls"></div>
+  <div class="grid side">
+    <div class="card"><div id="stokeslet-scene"></div><p class="caption">灰色の矢印は流れの向き（長さは遠方でも見えるよう、速さに対して頭打ちにしてある）。橙の点が観測点で、橙の矢印はそこでの流速。</p></div>
+    <div class="card"><h3>観測点での 8πμ G</h3><div id="stokeslet-matrix"></div><div id="stokeslet-out"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>減衰の速さ</h3>
+    <div id="decay-plot"></div>
+    <p class="caption">球（半径 $a$）を速さ 1 で動かす力 $6\pi\mu a$ を点力として置いた流れと、角速度 1 で回る球の流れ、および次の節の有限サイズの項を比べる。力を持つものは $1/r$、トルクだけを持つものは $1/r^2$ で減衰する。</p>
+  </div>
+
+  <h2>点力を球にする</h2>
+  <div class="prose">
+    <p>点力の流れは原点で発散する。半径 $a$ の球の表面で $G\boldsymbol f$ を見ると、表面平均はちょうど $\boldsymbol f/(6\pi\mu a)$ になるが、場所によって速さが違うので剛体の運動ではない。これに $\tfrac{a^2}{6}\nabla^2G\boldsymbol f$（点源の二重湧き出しで、$1/r^3$ で減衰する）を加えると</p>
+    $$\boldsymbol u(\boldsymbol r)=\left(1+\frac{a^2}{6}\nabla^2\right)G(\boldsymbol r)\boldsymbol f$$
+    <p>は球面上で一様に $\boldsymbol U=\boldsymbol f/(6\pi\mu a)$ となり、並進する剛体球の厳密な流れになる。この $\tfrac{a^2}{6}\nabla^2$ が、ページ7の Faxén 則と RPY 移動度に再び現れる。</p>
+  </div>
+  <div class="controls" id="surface-controls"></div>
+  <div class="grid two">
+    <div class="card"><div id="surface-plot"></div><p class="caption">力 $\boldsymbol f=6\pi\mu a\boldsymbol e_z$（$\boldsymbol U=\boldsymbol e_z$）。極角 $\theta$ は $z$ 軸から測る。実線が $u_z$、破線が $u_x$。</p></div>
+    <div class="card"><div id="surface-out"></div></div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>流れは力の向きにだけ生じる、と思う</strong>$G$ は対角ではない。力の向きと観測点の向きが斜めだと、観測点は力と違う向きに動く。この非対角成分が、二粒子の沈降で粒子が横にずれる原因になる（ページ8）。</div>
+  <div class="pitfall"><strong>点力の流れを粒子の表面まで使う</strong>点力の流れは、粒子の大きさが粒子間の距離に比べて無視できるときの近似である。粒子が近づくと $a^2\nabla^2$ の補正、さらにその先では潤滑の効果が必要になる（ページ9）。</div>
+</main>
+</body>
+</html>
