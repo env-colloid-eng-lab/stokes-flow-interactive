@@ -29,7 +29,7 @@ export const pages = [
     title: "二球が近づくと", desc: "JO 級数・境界条件解法・RPY・潤滑を比べる", sec: "第10・12・13章" },
   { id: "p10", num: 10, part: "multi", status: "ready", file: "many-body.html",
     title: "多体：R は二体の和ではない", desc: "三球・N球の沈降と抵抗行列の時間変化", sec: "第12・14章" },
-  { id: "p11", num: 11, part: "multi", status: "planned", file: "sd-structure.html",
+  { id: "p11", num: 11, part: "multi", status: "ready", file: "sd-structure.html",
     title: "SD の組み立て", desc: "11成分、Schur 補行列、二重計上の回避", sec: "第14章" },
   { id: "p12", num: 12, part: "fluct", status: "planned", file: "brownian.html",
     title: "揺らぎと平衡", desc: "相関ブラウン変位と熱ドリフト", sec: "第15章" },

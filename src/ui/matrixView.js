@@ -26,6 +26,7 @@ export function colorFor(v, vmax, palette, gamma = 0.5) {
 /**
  * opts.labels      row/column labels (e.g. ["1x","1y",...])
  * opts.block       block size for separators (3 for translation)
+ * opts.blocks      or a list of block sizes, e.g. [3, 3, 5] for translation, rotation, strain
  * opts.explain     (i, j, value) => Node | string, shown under the matrix
  * opts.onSelect    (i, j) => void, called on click
  * opts.format      value formatter for the cell text
@@ -46,24 +47,35 @@ export function createMatrixView(container, opts = {}) {
     explain.append(content instanceof Node ? content : document.createTextNode(content));
   }
 
+  // last index of each block (a separator follows it) and first index (gets a label in compact mode)
+  function blockEdges(n) {
+    const sizes = opts.blocks ?? Array.from({ length: Math.ceil(n / block) }, () => block);
+    const ends = new Set(), starts = new Set();
+    let k = 0;
+    for (const s of sizes) { starts.add(k); k += s; ends.add(k - 1); }
+    ends.delete(n - 1);
+    return { ends, starts };
+  }
+
   function build(n) {
     grid.replaceChildren();
+    const { ends, starts } = blockEdges(n);
     const small = n > 12, tiny = n > 18;
     grid.style.gridTemplateColumns = `auto repeat(${n}, auto)`;
     grid.append(h("div", { class: "head" }));
     for (let j = 0; j < n; j++) {
-      const lab = h("div", { class: "head" + ((j + 1) % block === 0 && j < n - 1 ? " block-r" : "") }, small ? "" : labels[j] ?? "");
+      const lab = h("div", { class: "head" + (ends.has(j) ? " block-r" : "") }, small ? "" : labels[j] ?? "");
       if (!small) lab.style.width = "46px";
       grid.append(lab);
     }
     cells = [];
     for (let i = 0; i < n; i++) {
-      grid.append(h("div", { class: "head", style: { paddingRight: "4px" } }, small && i % block ? "" : labels[i] ?? ""));
+      grid.append(h("div", { class: "head", style: { paddingRight: "4px" } }, small && !starts.has(i) ? "" : labels[i] ?? ""));
       const row = [];
       for (let j = 0; j < n; j++) {
         let cls = "cell" + (small ? " small" : "") + (tiny ? " tiny" : "");
-        if ((j + 1) % block === 0 && j < n - 1) cls += " block-r";
-        if ((i + 1) % block === 0 && i < n - 1) cls += " block-b";
+        if (ends.has(j)) cls += " block-r";
+        if (ends.has(i)) cls += " block-b";
         const c = h("div", { class: cls, role: "gridcell", tabindex: small ? -1 : 0 });
         c.addEventListener("mouseenter", () => { hover = [i, j]; showExplain(i, j); });
         c.addEventListener("mouseleave", () => { hover = null; if (selected) showExplain(...selected); });

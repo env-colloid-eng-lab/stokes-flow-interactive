@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>SD の組み立て</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/sd-structure.js"></script>
+</head>
+<body>
+<main>
+  <h1>11. SD の組み立て</h1>
+  <p class="lead">ストークス動力学（Stokesian Dynamics、SD）は、遠方の多体相互作用と近接した二球の抵抗を一つの抵抗行列にまとめる方法である。どの部品がどこから来て、何を省いているのかを、ここまでに作った計算を組み合わせて確かめる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>どこまでが厳密で、どこからが近似か</h2>
+  <div class="prose">
+    <p>同じ「多粒子の抵抗」でも、どの段階の話をしているかで意味が違う。このサイトの各ページがどの段階を扱っているかを並べる。</p>
+    <table class="data text">
+      <tr><th>段階</th><th>中身</th><th>このサイトでの例</th></tr>
+      <tr><td>物理モデル</td><td>非圧縮・ニュートン流体、慣性なし、剛体球、滑りなし</td><td>全ページの前提</td></tr>
+      <tr><td>厳密な境界値問題</td><td>全粒子の表面で速度を指定し、遠方で流れが消える</td><td>—</td></tr>
+      <tr><td>解の表し方</td><td>多重極展開、Lamb の一般解、境界積分</td><td>JO 級数、流れ関数のモード（9.・10.）</td></tr>
+      <tr><td>数値近似</td><td>有限の次数・求積点・反復の許容誤差</td><td>次数 K・L と境界残差（9.・10.）</td></tr>
+      <tr><td>SD の近似</td><td>低次の遠方相互作用と二体の近接抵抗の組合せ</td><td>このページの「SD 型」</td></tr>
+    </table>
+  </div>
+
+  <h2>一粒子あたり 11 成分</h2>
+  <div class="prose">
+    <p>球が受ける流体の作用は、合力（3 成分）、トルク（3 成分）、ストレスレット（対称でトレースのない 2 階テンソル、5 成分）で表せる。これに対応する運動は、並進速度、角速度、変形速度（剛体なので背景流の $-\boldsymbol e^\infty$ に拘束される）である。</p>
+    $$\boldsymbol q=\begin{pmatrix}\boldsymbol U-\boldsymbol u^\infty\\ \boldsymbol\Omega-\boldsymbol\omega^\infty\\ -\boldsymbol e^\infty\end{pmatrix},\qquad \boldsymbol g=\begin{pmatrix}\boldsymbol f\\ \boldsymbol\tau\\ -\boldsymbol s\end{pmatrix},\qquad \boldsymbol g=\mathcal R\boldsymbol q$$
+    <p>孤立球なら $\mathcal R_0=\operatorname{diag}(6\pi\mu a\,I_3,\ 8\pi\mu a^3 I_3,\ \tfrac{20\pi}{3}\mu a^3 I_5)$ で、三つの係数はどれも一球の表面積分（第4・5章）から得られる。</p>
+  </div>
+  <div class="grid two">
+    <div class="card">
+      <h3>孤立球の $\mathcal R_0$（11×11）</h3>
+      <div id="r0"></div>
+    </div>
+    <div class="card">
+      <h3>5 成分の取り方</h3>
+      <p class="caption">ストレスレット $S$ と変形速度 $E$ の仕事率は二重縮約 $S:E=\sum_{ij}S_{ij}E_{ij}$ である。正規直交な基底 $B_a$（$B_a:B_b=\delta_{ab}$）で $s_a=B_a:S$ とすると $S:E=\boldsymbol s\cdot\boldsymbol e$ になる。成分を 5 個抜き出しただけでは一致しない。</p>
+      <div class="controls"><button class="action" type="button" id="stf-new">別の組を作る</button></div>
+      <div id="stf"></div>
+    </div>
+  </div>
+
+  <h2>剛体の拘束を消去する（Schur 補行列）</h2>
+  <div class="prose">
+    <p>一般化移動度を運動の部分 $v$（並進・回転）とひずみの部分 $s$ に分ける。剛体球は変形できないので、下の行は「変形速度が $-\boldsymbol e^\infty$ に等しい」という拘束になる。</p>
+    $$\begin{pmatrix}\boldsymbol q_v\\ -\boldsymbol e^\infty\end{pmatrix}=\begin{pmatrix}M_{vv}&M_{vs}\\ M_{sv}&M_{ss}\end{pmatrix}\begin{pmatrix}\boldsymbol g_v\\ \boldsymbol g_s\end{pmatrix}
+    \ \Longrightarrow\
+    \boldsymbol q_v=\left(M_{vv}-M_{vs}M_{ss}^{-1}M_{sv}\right)\boldsymbol g_v-M_{vs}M_{ss}^{-1}\boldsymbol e^\infty$$
+    <p>背景のひずみがなくても（$\boldsymbol e^\infty=0$）、$M_{sv}\ne0$ なら $\boldsymbol g_s\ne0$、つまりストレスレットが誘起される。下の計算は物理的な係数ではなく、任意の対称正定値行列で消去の代数を確かめるものである。</p>
+  </div>
+  <div class="controls" id="schur-controls"></div>
+  <div class="grid two">
+    <div class="card">
+      <h3>一般化移動度（例）</h3>
+      <div id="schur-matrix"></div>
+    </div>
+    <div class="card">
+      <h3>誘起されるストレスレット $\boldsymbol g_s$</h3>
+      <div id="schur-out"></div>
+    </div>
+  </div>
+
+  <h2>SD 型の抵抗を三球で試す</h2>
+  <div class="prose">
+    <p>標準的な SD は、遠方の移動度 $\mathcal M^\infty$ の逆行列に、近接した二球の補正を足して抵抗を作る。</p>
+    $$\mathcal R_{\mathrm{SD}}\simeq(\mathcal M^\infty)^{-1}+\sum_{\text{対}}\left(\mathcal R^{2B}-\mathcal R^{2B,\infty}\right)$$
+    <p>$\mathcal R^{2B}$ は二球の厳密な抵抗、$\mathcal R^{2B,\infty}$ は同じ二球について遠方の近似が既に含んでいる分である。差を足すことで二重計上を避ける。ここでは並進だけ・中心線方向だけの小さな版を作る。遠方は RPY の逆行列、$\mathcal R^{2B}$ は境界条件解法の二球解とする。これを同軸三球の厳密解（<a href="many-body.html">10.</a>）と比べる。</p>
+  </div>
+  <div class="controls" id="sd-controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>抵抗 $R/(6\pi\mu a)$ と厳密解からのずれ</h3>
+      <div id="sd-table"></div>
+      <p class="caption" id="sd-note"></p>
+    </div>
+    <div class="card">
+      <h3>隙間による誤差の変化</h3>
+      <div class="controls"><button class="action" type="button" id="sd-scan">描く</button><span class="caption" id="sd-scan-status"></span></div>
+      <div id="sd-plot"></div>
+      <p class="caption">二つの隙間を同じ $h$ にした同軸三球で、厳密解に対する最大の相対誤差（$\max_{ij}|R_{ij}-R^{\mathrm{exact}}_{ij}|/R^{\mathrm{exact}}_{11}$）を描く。</p>
+    </div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>二体補正をそのまま足す</strong>遠方の逆行列には二体の寄与が既に入っている。二球の厳密な抵抗をそのまま足すと、その分を二重に数える。足すのは厳密な二体解と、遠方近似の二体解との差である。</div>
+  <div class="pitfall"><strong>規約をそろえずに差を取る</strong>力の向き（粒子が流体に及ぼす力か、流体が粒子に及ぼす力か）、無次元化の係数（例えば JO の $3\pi\mu(a_1+a_2)$）、自由度の並び、遠方の打切り次数がそろっていなければ、差に意味はない。</div>
+  <div class="pitfall"><strong>11 成分の応答＝表面力の厳密な表現、ではない</strong>力・トルク・ストレスレットは表面力分布の低次のモーメントにすぎず、それより高次のモーメントを捨てた分は近接で誤差として現れる。このページの SD 型は、さらに遠方を力だけで作り、ストレスレットも捨てている。そのため誤差はもっと早く現れ、近接では $R_{13}$ の符号まで厳密解と逆になる。</div>
+</main>
+</body>
+</html>

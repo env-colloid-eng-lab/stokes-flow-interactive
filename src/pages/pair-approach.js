@@ -1,4 +1,4 @@
-import { initPage, h, tex, segmented, slider, fmt } from "../ui/page.js";
+import { initPage, h, field, tex, segmented, slider, fmt } from "../ui/page.js";
 import { createMatrixView } from "../ui/matrixView.js";
 import { createPlot } from "../ui/plot.js";
 import { joPolynomials, joXA } from "../physics/jo.js";
@@ -47,13 +47,13 @@ function trajectory(model) {
 const controls = document.getElementById("controls");
 controls.append(
   slider({ label: "潤滑の切替え h_c/a", min: 0.05, max: 0.5, step: 0.01, value: state.hc, format: (v) => v.toFixed(2), onInput: (v) => { state.hc = v; update(["lub"]); } }),
-  h("label", {}, "JO の次数 K", segmented([[10, "10"], [20, "20"], [40, "40"], [60, "60"]], state.K, (v) => { state.K = v; update(["jo"]); renderColloc(); })));
+  field("JO の次数 K", segmented([[10, "10"], [20, "20"], [40, "40"], [60, "60"]], state.K, (v) => { state.K = v; update(["jo"]); renderColloc(); })));
 
 const cc = document.getElementById("colloc-controls");
 const collocStatus = h("span", { class: "caption" });
 const collocButton = h("button", { class: "action", type: "button", onclick: () => runCollocation() }, "計算する");
 cc.append(
-  h("label", {}, "次数 L", segmented([[16, "16"], [32, "32"], [64, "64"]], state.L, (v) => { state.L = v; })),
+  field("次数 L", segmented([[16, "16"], [32, "32"], [64, "64"]], state.L, (v) => { state.L = v; })),
   collocButton, collocStatus);
 
 const mc = document.getElementById("motion-controls");
@@ -62,7 +62,7 @@ mc.append(
   slider({ label: "最初の隙間 h₀/a", min: 0.3, max: 4, step: 0.1, value: state.h0, format: (v) => v.toFixed(1), onInput: (v) => { state.h0 = v; renderMotion(); } }),
   tSlider);
 document.getElementById("matrix-controls").append(
-  h("label", {}, "モデル", segmented(Object.entries(MODELS).map(([k, m]) => [k, m.name]), state.matrixModel, (v) => { state.matrixModel = v; renderMatrix(); renderGap(); })));
+  field("モデル", segmented(Object.entries(MODELS).map(([k, m]) => [k, m.name]), state.matrixModel, (v) => { state.matrixModel = v; renderMatrix(); renderGap(); })));
 
 const resPlot = createPlot(document.getElementById("resplot"), { height: 320, xlog: true, ylog: true, xlabel: "隙間 h/a", ylabel: "X₁₁ − X₁₂" });
 const gapPlot = createPlot(document.getElementById("gapplot"), { height: 280, ylog: true, xlabel: "時間 t（μa²/F）", ylabel: "隙間 h/a" });

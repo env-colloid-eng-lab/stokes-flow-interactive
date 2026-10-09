@@ -60,9 +60,11 @@ export function pairwiseSumResistance(X, opts = {}) {
 /**
  * Coaxial spheres moving along the axis: exact (collocation) N-body resistance and the
  * pairwise sum built from exact two-body solutions with the same order L.
- * pairCache (a Map) may be passed to reuse two-body solutions between calls.
+ * pairCache (a Map) may be passed to reuse two-body solutions between calls. It is cleared
+ * once it holds more than pairCacheLimit entries, so a long slider session stays bounded.
  */
-export function axialManyBody(centers, radii, { L = 16, mu = 1, pairCache = null } = {}) {
+export function axialManyBody(centers, radii, { L = 16, mu = 1, pairCache = null, pairCacheLimit = 500 } = {}) {
+  if (pairCache && pairCache.size > pairCacheLimit) pairCache.clear();
   const full = axialCollocation(centers, radii, { L, mu, withCondition: false });
   let worst = full.boundaryError;
   const pairR = (p, q) => {
@@ -77,4 +79,10 @@ export function axialManyBody(centers, radii, { L = 16, mu = 1, pairCache = null
   };
   const R2B = pairwiseSum(radii.length, 1, pairR, (p) => [[6 * Math.PI * mu * radii[p]]]);
   return { R: full.R, R2B, boundaryError: worst };
+}
+
+// Axial (z) components of a 3N x 3N translational matrix, as an N x N matrix.
+export function axialComponents(R) {
+  const idx = Array.from({ length: R.length / 3 }, (_, k) => 3 * k + 2);
+  return idx.map((i) => idx.map((j) => R[i][j]));
 }
