@@ -5,6 +5,7 @@ export const parts = [
   { id: "basic", title: "基礎編：テンソルからストークス方程式、一球の応答へ" },
   { id: "multi", title: "多粒子編：抵抗行列と移動度行列" },
   { id: "fluct", title: "揺らぎ" },
+  { id: "compare", title: "モデルを比べる" },
 ];
 
 // status: "ready" | "planned"
@@ -33,6 +34,8 @@ export const pages = [
     title: "SD の組み立て", desc: "11成分、Schur 補行列、二重計上の回避", sec: "第14章" },
   { id: "p12", num: 12, part: "fluct", status: "ready", file: "brownian.html",
     title: "揺らぎと平衡", desc: "相関ブラウン変位と熱ドリフト", sec: "第15章" },
+  { id: "p13", num: 13, part: "compare", status: "ready", file: "model-compare.html",
+    title: "案A と案B を比べる", desc: "RPY 逆行列と Jeffrey–Onishi の厳密関数を 12×12 で比べる", sec: "第13・14章の先" },
 ];
 
 // from -> to : the result produced in `from` and how `to` uses it.
@@ -55,6 +58,9 @@ export const links = [
   { from: "p9", to: "p12", result: "接近モードの抵抗 X¹¹ − X¹²", use: "近づいた二球の相対拡散が 0 に近づく" },
   { from: "p9", to: "p11", result: "二体の厳密な抵抗と潤滑", use: "近接対の補正 R²ᴮ − R²ᴮ'∞" },
   { from: "p10", to: "p11", result: "多体の反射", use: "二体の和だけでは厳密にならない理由" },
+  { from: "p9", to: "p13", result: "JO 級数と潤滑", use: "全 10 関数の近接特異性を分けて足す" },
+  { from: "p11", to: "p13", result: "Schur 補行列", use: "回転を消去して案A と同じ条件で比べる" },
+  { from: "p6", to: "p13", result: "ストレスレット", use: "X^A₁₁ が r⁻⁴ から違い始める理由" },
 ];
 
 export const pageById = (id) => pages.find((p) => p.id === id);

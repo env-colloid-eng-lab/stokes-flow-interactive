@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>案A と案B を比べる</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/model-compare.js"></script>
+</head>
+<body>
+<main>
+  <h1>13. 案A と案B を比べる</h1>
+  <p class="lead">二つの球の抵抗を、並進と回転の両方について 12×12 の行列として求める方法を二つ並べる。案A は RPY 移動度を逆行列にしたもので、ページ8〜11で使ってきた。案B は Jeffrey と Onishi の厳密な抵抗関数で、近接での特異性まで含む。同じ条件で並べると、どの成分が、どの距離から、どれだけ違うかが見える。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>二つのモデル</h2>
+  <div class="prose">
+    <p>等しい半径 $a$ の二球について、球が流体に及ぼす力とトルクは</p>
+    $$\begin{pmatrix}\boldsymbol F_1\\ \boldsymbol F_2\\ \boldsymbol L_1\\ \boldsymbol L_2\end{pmatrix}=
+    \begin{pmatrix}A_{11}&A_{12}&\tilde B_{11}&\tilde B_{12}\\ A_{21}&A_{22}&\tilde B_{21}&\tilde B_{22}\\ B_{11}&B_{12}&C_{11}&C_{12}\\ B_{21}&B_{22}&C_{21}&C_{22}\end{pmatrix}
+    \begin{pmatrix}\boldsymbol U_1\\ \boldsymbol U_2\\ \boldsymbol\Omega_1\\ \boldsymbol\Omega_2\end{pmatrix},\qquad
+    A_{\alpha\beta}=6\pi\mu a\left[X^A_{\alpha\beta}\boldsymbol e\boldsymbol e+Y^A_{\alpha\beta}(I-\boldsymbol e\boldsymbol e)\right]$$
+    <p>と書ける（$\boldsymbol e$ は球 1 から球 2 への単位ベクトル、$\tilde B$ は $B$ の転置）。$B_{\alpha\beta}=4\pi\mu a^2Y^B_{\alpha\beta}\,\boldsymbol\varepsilon\cdot\boldsymbol e$、$C$ は $8\pi\mu a^3$ を単位に $A$ と同じ形をとる。軸対称性のおかげで、行列全体は 10 個のスカラー関数で決まる。</p>
+    <ul>
+      <li><strong>案A</strong>：並進と回転を含む RPY 移動度（12×12）を逆行列にする。回転の部分は教科書の範囲外だが、同じ近似の延長である。距離が近づいても有限のままで、潤滑の発散を含まない。</li>
+      <li><strong>案B</strong>：Jeffrey と Onishi（1984）の漸化式から、遠方の級数の係数を 200 次まで作る。接触のすき間 $\xi=h/a$ での特異性（$1/\xi$、$\ln(1/\xi)$）を閉じた形の関数で分けて足し、級数からはその分を差し引く。こうすると、級数がほとんど収束しない接触の近くでも値が求まる。</li>
+    </ul>
+    <p>級数の係数は論文に印刷された多項式と一致することを、近接の定数は論文の表（等しい半径）と一致することを、テストで確かめている。</p>
+  </div>
+
+  <h2>関数をすき間の関数として比べる</h2>
+  <div class="controls" id="fam-controls"></div>
+  <div class="card"><div id="fam-plot"></div><p class="caption">実線が案B、破線が案A、点線が案B の近接での主要項。「級数だけ」にすると、特異項を分けない遠方の級数を 200 項で打ち切った値を描く。打ち切った級数は、すき間が 0.05 より狭くなると外れ始め、$X^A_{11}$ では $h/a=0.02$ で 12%、$0.01$ で 34% ずれる。</p></div>
+  <div class="controls" id="gap-controls"></div>
+  <div class="card"><div id="fam-table"></div></div>
+
+  <h2>12×12 の抵抗行列を並べる</h2>
+  <div class="prose"><p>上で選んだすき間で、行列全体を比べる。各ブロックをそれぞれの単位（$6\pi\mu a$、$4\pi\mu a^2$、$8\pi\mu a^3$）で割って表示する。案A の値は接近しても有限にとどまる。案B との差は $A$ ブロックだけでなく、並進と回転の結合（$B$ ブロック）や回転の抵抗（$C$ ブロック）にも現れる。</p></div>
+  <div class="controls" id="mat-controls"></div>
+  <div class="card"><div id="mat"></div></div>
+
+  <h2>どこから違い始めるか</h2>
+  <div class="prose">
+    <p>遠方では二つのモデルの差はべき乗で小さくなる。両対数の傾きが、案A に含まれていない最初の効果の次数を表す。中心線方向の自己抵抗 $X^A_{11}$ は $r^{-4}$ から違い始める。これは、相手の球が流れの変形に逆らう効果（ストレスレット、ページ6）が RPY に入っていないためである。垂直方向や回転の関数は、もっと高い次数から違い始める。</p>
+  </div>
+  <div class="card"><div id="far-plot"></div></div>
+
+  <h2>回転を固定するか、自由に回すか</h2>
+  <div class="prose">
+    <p>$Y^A$ は「回転を止めたまま」垂直に並進させたときの抵抗である。球が自由に回れる（トルクがゼロ）ときの並進抵抗は、回転の自由度を消去した $A-\tilde BC^{-1}B$（ページ11の Schur 補行列）で、これより小さい。ページ8〜11の案A は、RPY の並進部分だけを逆行列にしているので、トルクがゼロの場合に当たる。案A と比べるときは、案B のほうもトルクをゼロにしてから比べなければならない。</p>
+  </div>
+  <div class="card"><div id="tf-plot"></div></div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>遠方の級数を接触の近くまで使う</strong>級数の係数を何百項とっても、$1/\xi$ や $\ln(1/\xi)$ の特異性は表せない。特異性は閉じた形で分けて扱う。</div>
+  <div class="pitfall"><strong>回転を固定した抵抗と、トルクがゼロの抵抗を比べる</strong>同じ「垂直方向の抵抗」でも、回転の扱いが違えば別の量である。接触の近くでは差が大きい。</div>
+  <div class="pitfall"><strong>RPY の逆行列で接近する二球を扱う</strong>案A の抵抗は接触でも有限なので、押し合う二球はそのまま重なってしまう。ページ9・11のように、潤滑の項を別に加える必要がある。</div>
+</main>
+</body>
+</html>
