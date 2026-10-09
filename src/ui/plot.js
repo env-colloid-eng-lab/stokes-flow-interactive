@@ -19,8 +19,10 @@ function niceTicks(lo, hi, n = 5) {
   return ticks;
 }
 function logTicks(lo, hi) {
+  const e0 = Math.ceil(Math.log10(lo) - 1e-9), e1 = Math.floor(Math.log10(hi) + 1e-9);
+  const step = Math.max(1, Math.ceil((e1 - e0 + 1) / 10)); // at most about ten labelled decades
   const out = [];
-  for (let e = Math.ceil(Math.log10(lo) - 1e-9); e <= Math.floor(Math.log10(hi) + 1e-9); e++) out.push(10 ** e);
+  for (let e = Math.ceil(e0 / step) * step; e <= e1; e += step) out.push(10 ** e);
   return out;
 }
 const tickLabel = (t, log) => {
