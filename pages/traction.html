@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>面に働く力</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/traction.js"></script>
+</head>
+<body>
+<main>
+  <h1>3. 面に働く力 $\boldsymbol t=\sigma\boldsymbol n$</h1>
+  <p class="lead">流体の中に仮想的な切断面を入れると、面の向きによって、その面を通して伝わる力が変わる。この「面の向き → 力」の対応が線形であることから、応力は二階テンソルになる。後で球の表面でこの力を積分すると、抵抗 $6\pi\mu a$ が得られる（ページ6）。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>面の向きから力へ</h2>
+  <div class="prose">
+    <p>単位法線 $\boldsymbol n$ の面に働く単位面積当たりの力（表面力、トラクション）は</p>
+    $$t_i=\sigma_{ij}n_j$$
+    <p>で与えられる。第1添字が力の方向、第2添字が面の法線の方向である。例えば $\sigma_{21}$ は「$x$ に垂直な面に働く $y$ 方向の力」である。斜めの面の力は、座標面の力の重ね合わせ $\boldsymbol t(\boldsymbol n)=n_1\boldsymbol t(\boldsymbol e_1)+n_2\boldsymbol t(\boldsymbol e_2)$ になる。これは、小さな三角形（三次元では四面体）の力のつり合いから導かれる。</p>
+    <p>非圧縮ニュートン流体では $\sigma=-pI+2\mu E$ である。圧力だけなら力は面に垂直になり、粘性があると面に沿った成分（せん断応力）も生じる。</p>
+  </div>
+
+  <h2>面を回してみる</h2>
+  <div class="controls" id="controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>切断面と表面力</h3>
+      <div id="scene"></div>
+      <p class="caption">黒線が切断面、灰色の矢印が法線 $\boldsymbol n$。橙の矢印が表面力 $\boldsymbol t=\sigma\boldsymbol n$、細い矢印は $n_1\boldsymbol t(\boldsymbol e_1)$（青）と $n_2\boldsymbol t(\boldsymbol e_2)$（紫）で、つなぐと $\boldsymbol t$ になる。緑の破線は応力の主軸。</p>
+    </div>
+    <div class="card">
+      <h3>応力の成分</h3>
+      <div id="matrix"></div>
+      <div id="readout"></div>
+    </div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h3>面の角度による変化</h3>
+      <div id="plot"></div>
+      <p class="caption">法線方向の成分 $t_n=\boldsymbol t\cdot\boldsymbol n$ と、面に沿った成分 $t_s$。せん断成分が 0 になる向きが主軸で、そのときの $t_n$ が主応力である。</p>
+    </div>
+    <div class="card">
+      <h3>モールの円</h3>
+      <div id="mohr"></div>
+      <p class="caption">面を一周回したときの $(t_n,t_s)$ を描く。対称な応力では円になり、横軸との交点が主応力である。</p>
+    </div>
+  </div>
+
+  <h2>応力はなぜ対称か</h2>
+  <div class="prose">
+    <p>小さな正方形の要素に働く応力のモーメントを足すと、$z$ 方向の成分は単位体積当たり $\sigma_{21}-\sigma_{12}$ になる。要素を小さくすると、慣性モーメントは表面のモーメントより速く小さくなる。そのため、この値が 0 でなければ要素の角加速度が際限なく大きくなってしまう。内部に偶力を持たない通常の流体では、角運動量の保存から $\sigma_{12}=\sigma_{21}$ でなければならない。「非対称（禁止）」の例を選ぶと、要素に残るモーメントが表示される。</p>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>添字の順序を逆に読む</strong>$\sigma_{ij}$ の第1添字は力の方向、第2添字は面の法線の方向である。対称な応力では区別が見えにくいが、非対称な例で $\boldsymbol t=\sigma\boldsymbol n$ と $\sigma^{\mathsf T}\boldsymbol n$ を比べると違いがわかる。</div>
+  <div class="pitfall"><strong>応力の対称性を作用・反作用と混同する</strong>$\sigma_{12}=\sigma_{21}$ は、向きの違う二つの面（$x$ に垂直な面と $y$ に垂直な面）のせん断応力の関係で、角運動量の保存から出る。同じ面の両側で力が逆向き（$\boldsymbol t(-\boldsymbol n)=-\boldsymbol t(\boldsymbol n)$）になることとは別の話である。</div>
+</main>
+</body>
+</html>

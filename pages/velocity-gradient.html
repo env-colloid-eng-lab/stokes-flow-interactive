@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>流体要素は回るのか伸びるのか</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/velocity-gradient.js"></script>
+</head>
+<body>
+<main>
+  <h1>2. 流体要素は回るのか伸びるのか</h1>
+  <p class="lead">流れの中の小さな流体要素は、移動しながら伸び縮みし、回転する。近くの二点の速度の差を与える速度勾配 $L$ を対称な部分 $E$ と反対称な部分 $W$ に分けると、伸び縮みと回転をはっきり分けられる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>速度勾配を二つに分ける</h2>
+  <div class="prose">
+    <p>近くの二点の位置の差を $\delta\boldsymbol x$ とすると、速度の差は一次の範囲で</p>
+    $$\delta u_i=L_{ij}\,\delta x_j,\qquad L_{ij}=\partial_ju_i$$
+    <p>である（行が速度の成分、列が微分する座標）。これを</p>
+    $$E=\frac{L+L^{\mathsf T}}2,\qquad W=\frac{L-L^{\mathsf T}}2,\qquad \frac{d}{dt}|\delta\boldsymbol x|^2=2\,\delta\boldsymbol x^{\mathsf T}E\,\delta\boldsymbol x$$
+    <p>と分ける。反対称な $W$ は $\delta\boldsymbol x^{\mathsf T}W\delta\boldsymbol x=0$ なので長さの変化に寄与しない。$W\boldsymbol r=\boldsymbol\omega\times\boldsymbol r$ となる局所角速度は $\boldsymbol\omega=\tfrac12\nabla\times\boldsymbol u$ で、平面の流れでは $\omega_z=W_{21}$ である。$\operatorname{tr}L=\nabla\cdot\boldsymbol u$ は面積（体積）の増える率を表す。</p>
+  </div>
+
+  <h2>流れに乗った要素を動かす</h2>
+  <div class="controls" id="controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>流体要素の変形</h3>
+      <div id="scene"></div>
+      <div class="controls" id="anim"></div>
+      <p class="caption">灰色の矢印は速度場 $\boldsymbol u=L\boldsymbol x$（表示中の部分だけ）。青い円と格子は、時刻 0 に円と正方形だった流体要素。橙の線分は追跡する物質線 $\delta\boldsymbol x$。緑の破線は $E$ の主軸（伸びる方向と縮む方向）。</p>
+    </div>
+    <div class="card">
+      <h3>分解の結果</h3>
+      <div class="grid two" style="gap:8px">
+        <div><div class="caption">対称な部分 $E$（ひずみ速度）</div><div id="m-e"></div></div>
+        <div><div class="caption">反対称な部分 $W$（回転）</div><div id="m-w"></div></div>
+      </div>
+      <div id="readout"></div>
+    </div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>単純せん断は「滑っているだけ」と思う</strong>$u_x=\dot\gamma y$ は、45 度方向の伸長と圧縮（$E$ の固有値 $\pm\dot\gamma/2$）と、角速度 $\omega_z=-\dot\gamma/2$ の回転の和である。「E だけ」と「W だけ」に切り替えて確かめよう。</div>
+  <div class="pitfall"><strong>回転テンソルの符号を取り違える</strong>このサイトは教科書と同じく $L_{ij}=\partial_ju_i$、$W=(L-L^{\mathsf T})/2$ を使う。$\Omega_{ij}=(\partial_iu_j-\partial_ju_i)/2$ と定義する資料もあり、その場合は $\Omega=-W$ となる。記号だけでなく、どちらの添字が微分の方向かを確かめる。</div>
+</main>
+</body>
+</html>

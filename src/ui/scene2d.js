@@ -30,15 +30,20 @@ export function createScene(container, { width = 480, height = 340 } = {}) {
    * spheres: [{ x, z, a, label, fill }]
    * arrows:  [{ x, z, vx, vz, color, label, width }]   (vectors already in world units)
    * paths:   [{ points: [[x, z], ...], color, dash }]
-   * axes:    true to draw the x / z axis triad
+   * axes:    true to draw the x / z axis triad, or { x, up, out } labels for another plane
+   * polys:   [{ points: [[x, z], ...], fill, stroke }] closed polygons
    */
-  function draw({ view, spheres = [], arrows = [], paths = [], axes = true, lines = [], texts = [] }) {
+  function draw({ view, spheres = [], arrows = [], paths = [], polys = [], axes = true, lines = [], texts = [] }) {
     layer.replaceChildren();
     const k = width / view.span;
     const X = (x) => width / 2 + (x - view.cx) * k;
     const Z = (z) => height / 2 - (z - view.cz) * k;
     for (const l of lines)
       layer.append(s("line", { x1: X(l.x1), y1: Z(l.z1), x2: X(l.x2), y2: Z(l.z2), stroke: l.color ?? "var(--line)", "stroke-dasharray": l.dash ?? "5 4" }));
+    for (const pg of polys) {
+      const d = pg.points.map(([x, z], i) => `${i ? "L" : "M"}${X(x).toFixed(1)},${Z(z).toFixed(1)}`).join("") + "Z";
+      layer.append(s("path", { d, fill: pg.fill ?? "var(--accent-soft)", stroke: pg.stroke ?? "var(--accent)", "stroke-width": pg.width ?? 1.5, "fill-opacity": pg.opacity ?? 1 }));
+    }
     for (const p of paths) {
       const d = p.points.map(([x, z], i) => `${i ? "L" : "M"}${X(x).toFixed(1)},${Z(z).toFixed(1)}`).join("");
       layer.append(s("path", { d, fill: "none", stroke: p.color ?? "var(--muted)", "stroke-width": p.width ?? 1.5, "stroke-dasharray": p.dash ?? null }));
@@ -65,9 +70,11 @@ export function createScene(container, { width = 480, height = 340 } = {}) {
       const ox = 26, oz = height - 22;
       layer.append(s("line", { x1: ox, y1: oz, x2: ox + 30, y2: oz, stroke: "var(--muted)", "marker-end": `url(#${marker("var(--muted)")})` }));
       layer.append(s("line", { x1: ox, y1: oz, x2: ox, y2: oz - 30, stroke: "var(--muted)", "marker-end": `url(#${marker("var(--muted)")})` }));
-      layer.append(s("text", { x: ox + 36, y: oz + 4 }, "x"));
-      layer.append(s("text", { x: ox - 4, y: oz - 34 }, "z"));
-      layer.append(s("text", { x: ox - 14, y: oz + 14 }, "y⊗"));
+      // default: x right, z up, y into the screen; pass { x, up, out } for other planes
+      const lab = typeof axes === "object" ? axes : { x: "x", up: "z", out: "y⊗" };
+      layer.append(s("text", { x: ox + 36, y: oz + 4 }, lab.x));
+      layer.append(s("text", { x: ox - 4, y: oz - 34 }, lab.up));
+      if (lab.out) layer.append(s("text", { x: ox - 14, y: oz + 14 }, lab.out));
     }
   }
   return { draw, svg };

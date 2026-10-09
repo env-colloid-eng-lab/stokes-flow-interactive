@@ -9,11 +9,11 @@ export const parts = [
 
 // status: "ready" | "planned"
 export const pages = [
-  { id: "p1", num: 1, part: "basic", status: "planned", file: "tensor-basis.html",
+  { id: "p1", num: 1, part: "basic", status: "ready", file: "tensor-basis.html",
     title: "テンソルは基底によらない", desc: "基底を回すと成分は変わり、トレース・固有値は変わらない", sec: "§1.3–1.5" },
-  { id: "p2", num: 2, part: "basic", status: "planned", file: "velocity-gradient.html",
+  { id: "p2", num: 2, part: "basic", status: "ready", file: "velocity-gradient.html",
     title: "流体要素は回るのか伸びるのか", desc: "速度勾配を変形速度 E と回転 W に分ける", sec: "§1.6–1.7" },
-  { id: "p3", num: 3, part: "basic", status: "planned", file: "traction.html",
+  { id: "p3", num: 3, part: "basic", status: "ready", file: "traction.html",
     title: "面に働く力 t = σn", desc: "面を回して表面力と主軸を見る。応力の対称性", sec: "§2.1–2.2" },
   { id: "p4", num: 4, part: "basic", status: "planned", file: "stokes-limit.html",
     title: "慣性を捨てる", desc: "レイノルズ数、線形性、可逆性、散逸の正値性", sec: "§2.3–2.4" },
