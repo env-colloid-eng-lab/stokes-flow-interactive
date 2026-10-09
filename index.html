@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>テンソルからストークス動力学へ</title>
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" href="src/ui/style.css">
+<script defer src="vendor/katex/katex.min.js"></script>
+<script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="src/pages/index.js"></script>
+</head>
+<body>
+<main>
+  <h1>テンソルからストークス動力学へ</h1>
+  <p class="lead">粘性流体の中を動く粒子の抵抗行列・移動度行列が、どの式から来て、粒子の運動とともにどう変わるのかを、動かしながら確かめる教材。各ページは、前のページで得た結果を使って次の結果を作る。下の地図で、その流れをたどれる。</p>
+  <div class="note"><strong>記号の約束</strong>$\boldsymbol f$ は粒子が流体に及ぼす力（流体が粒子に及ぼす力 $\boldsymbol F^{\mathrm H}=-\boldsymbol f$）。$\boldsymbol U=M\boldsymbol f$、$\boldsymbol f=R\boldsymbol U$。速度勾配は $L_{ij}=\partial_ju_i$、$E=(L+L^{\mathsf T})/2$、$W=(L-L^{\mathsf T})/2$。数値は $a=\mu=F_0=1$ で無次元化し、$6\pi$ などの係数は残す。</div>
+  <div id="map"></div>
+  <h2>トピックのつながり</h2>
+  <div id="graph"></div>
+</main>
+</body>
+</html>

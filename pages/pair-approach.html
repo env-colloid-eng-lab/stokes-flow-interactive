@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>二球が近づくと</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/pair-approach.js"></script>
+</head>
+<body>
+<main>
+  <h1>9. 二球が近づくと</h1>
+  <p class="lead">同じ半径の二球を、中心線に沿って大きさの等しい逆向きの力で押し合わせる。隙間 $h$ が小さくなると、相対運動の抵抗はどこまで大きくなるか。同じ問いに四つの方法で答え、どこで一致し、どこから違うかを見る。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>四つの答え方</h2>
+  <div class="prose">
+    <p>球 1 を $x=0$、球 2 を $x=r$ に置き、$\boldsymbol f_1=+F\boldsymbol e_x$、$\boldsymbol f_2=-F\boldsymbol e_x$ を加える。中心線方向の抵抗を $6\pi\mu a$ で割った $X_{11},X_{12}$ を使うと、接近速度 $V=-\dot h$ は</p>
+    $$V=U_1-U_2=\frac{2F}{6\pi\mu a\,(X_{11}-X_{12})}$$
+    <p>となる。$X_{11}-X_{12}$ が「押し合う運動」の抵抗であり、<a href="pair-mobility.html">8.</a> の相対モードの固有値に当たる。</p>
+    <table class="data text">
+      <tr><th>方法</th><th>何を解いているか</th><th>近接での振る舞い</th></tr>
+      <tr><td>RPY の逆行列</td><td>遠方の近似（点力と有限サイズ補正）</td><td>$h\to0$ でも有限。有限時間で接触してしまう</td></tr>
+      <tr><td>RPY ＋ 教材潤滑</td><td>上に $\zeta_n=\frac{3\pi\mu a^2}{2}\left(\frac1h-\frac1{h_c}\right)$ を $h&lt;h_c$ で加える</td><td>$1/h$ で発散。$h_c$ の選び方は近似の一部</td></tr>
+      <tr><td>JO 級数（$K$ 次）</td><td>厳密解を $1/s$ で展開した級数（$s=r/a$）</td><td>近いほど多くの項が要る。打ち切ると近接では使えない</td></tr>
+      <tr><td>境界条件解法（$L$ 次）</td><td>厳密解を球面上の点で満たすよう数値的に解く</td><td>$L$ を増やせば近接でも精度が上がる。境界残差で確認する</td></tr>
+    </table>
+    <p>薄い隙間の流れ（潤滑理論）からは、主要項として $F\simeq\dfrac{6\pi\mu R_*^2}{h}V$、$\dfrac1{R_*}=\dfrac1{a_1}+\dfrac1{a_2}$ が得られる。等半径では $R_*=a/2$ なので $X_{11}-X_{12}\simeq\dfrac{a}{2h}$ となる。</p>
+  </div>
+
+  <h2>抵抗を距離の関数として比べる</h2>
+  <div class="controls" id="controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>押し合う運動の抵抗 $X_{11}-X_{12}$</h3>
+      <div id="resplot"></div>
+      <p class="caption">両対数。JO 級数は、$K$ 次と、次数を約 1/4 減らした級数との差が $10^{-4}$ 未満の範囲を実線、それより近い範囲を細い破線で描く。破線の部分は、数値は出ても答えとして使えない。</p>
+    </div>
+    <div class="card">
+      <h3>境界条件解法の結果</h3>
+      <div class="controls" id="colloc-controls"></div>
+      <div id="colloc"></div>
+      <p class="caption">境界残差は、係数を決めた点とは別の 121 点で測った境界条件の誤差の最大値。残差が大きいときは $L$ を増やす。</p>
+    </div>
+  </div>
+
+  <h2>押し合わせて動かす</h2>
+  <div class="controls" id="motion-controls"></div>
+  <div class="grid two">
+    <div class="card">
+      <h3>隙間 $h(t)$</h3>
+      <div id="gapplot"></div>
+      <p class="caption" id="gap-caption"></p>
+    </div>
+    <div class="card">
+      <h3 id="matrix-title">抵抗行列</h3>
+      <div class="controls" id="matrix-controls"></div>
+      <div id="matrix"></div>
+    </div>
+  </div>
+
+  <h2>どこから違い始めるか</h2>
+  <div class="grid two">
+    <div class="card">
+      <div id="diffplot"></div>
+    </div>
+    <div class="prose">
+      <p>遠く離れた二球では、RPY の逆行列と JO 級数は一致する。$X_{11}$ の差を $s=r/a$ に対して両対数で描くと、傾きは $-4$ になる。差は $s^{-4}$ の項から始まる。</p>
+      <p>その原因はストレスレットである。球 1 が作る流れの変形速度は $r^{-2}$ で減る。球 2 は剛体なのでこの変形に逆らう表面力の分布（ストレスレット）を持ち、それが作る流れも $r^{-2}$ で減る。球 1 に戻ってくる流れは $r^{-2}\times r^{-2}=r^{-4}$ となる。RPY は並進の点力とその有限サイズ補正だけを扱うので、この往復を含まない。</p>
+      <p>案A（このページ）の中にも、近似の違いが既にある。垂直方向の成分や回転を含めた比較は、案B（全関数）を追加するときに行う。</p>
+    </div>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>$F$ を $2F$ にしない</strong>潤滑の式の $F$ は一方の球に加えた力、$V$ は二球の相対速度である。二球にそれぞれ $\pm F$ を加えたとき、式の $F$ を $2F$ と置き換えると係数が 2 倍ずれる。</div>
+  <div class="pitfall"><strong>「数値が出た」と「収束した」は別</strong>打ち切った級数は、近接でももっともらしい数を返す。次数を変えて答えが変わらないこと、または境界残差が小さいことを確かめてから使う。</div>
+  <div class="pitfall"><strong>滑らかな球は有限時間では接触しない</strong>潤滑の主要項だけなら $h=h_0e^{-Kt}$、$K=2F/(3\pi\mu a^2)$ で隙間は指数的に減る。実際の凝集には、表面の粗さ・滑り・非流体力など別の物理が要る。</div>
+</main>
+</body>
+</html>
