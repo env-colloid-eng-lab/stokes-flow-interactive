@@ -31,7 +31,7 @@ export const pages = [
     title: "多体：R は二体の和ではない", desc: "三球・N球の沈降と抵抗行列の時間変化", sec: "第12・14章" },
   { id: "p11", num: 11, part: "multi", status: "ready", file: "sd-structure.html",
     title: "SD の組み立て", desc: "11成分、Schur 補行列、二重計上の回避", sec: "第14章" },
-  { id: "p12", num: 12, part: "fluct", status: "planned", file: "brownian.html",
+  { id: "p12", num: 12, part: "fluct", status: "ready", file: "brownian.html",
     title: "揺らぎと平衡", desc: "相関ブラウン変位と熱ドリフト", sec: "第15章" },
 ];
 
@@ -52,6 +52,7 @@ export const links = [
   { from: "p8", to: "p9", result: "R = M⁻¹ と固有モード", use: "接近（相対運動）モードの抵抗が近接で発散する" },
   { from: "p8", to: "p10", result: "R = M⁻¹", use: "多体では逆行列が第三粒子の影響を混ぜる" },
   { from: "p8", to: "p12", result: "正定値な M", use: "Cholesky 分解で相関した雑音を作る" },
+  { from: "p9", to: "p12", result: "接近モードの抵抗 X¹¹ − X¹²", use: "近づいた二球の相対拡散が 0 に近づく" },
   { from: "p9", to: "p11", result: "二体の厳密な抵抗と潤滑", use: "近接対の補正 R²ᴮ − R²ᴮ'∞" },
   { from: "p10", to: "p11", result: "多体の反射", use: "二体の和だけでは厳密にならない理由" },
 ];

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>揺らぎと平衡</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/brownian.js"></script>
+</head>
+<body>
+<main>
+  <h1>12. 揺らぎと平衡</h1>
+  <p class="lead">流体が粒子に及ぼす抵抗は、外力への応答だけでなく、熱運動による揺らぎの大きさも決める。移動度行列 $M$ は、ブラウン変位の共分散そのものである。このページでは、相関した変位の正しい作り方と、移動度が場所によって変わるときに必要な「熱ドリフト」の項を、平衡分布を手がかりに確かめる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>移動度は拡散も決める</h2>
+  <div class="prose">
+    <p>慣性の効かない（過減衰の）粒子系で、粒子の位置をまとめたベクトル $\boldsymbol X$ の一歩 $\Delta t$ の変化を、Itô の規約で</p>
+    $$\Delta X_i=\left[M_{ij}F_j+k_BT\,\frac{\partial M_{ij}}{\partial X_j}\right]\Delta t+\sqrt{2k_BT\,\Delta t}\;B_{ik}\xi_k,\qquad BB^{\mathsf T}=M$$
+    <p>と書く（$\xi_k$ は互いに独立な標準正規乱数）。雑音の部分の共分散は $\langle\Delta\boldsymbol X\,\Delta\boldsymbol X^{\mathsf T}\rangle=2k_BT\,M\Delta t$ である。孤立した球では、これは拡散係数 $D_0=k_BT/(6\pi\mu a)$（ストークス–アインシュタインの式）を与える。$M$ に粒子間の成分があれば、変位どうしも相関する。共分散行列は正定値でなければならないが、それはページ4で見た散逸の正値性が保証している。</p>
+  </div>
+
+  <h2>二球の変位は相関する</h2>
+  <div class="prose">
+    <p>$BB^{\mathsf T}=M$ を満たす $B$ は、Cholesky 分解 $M=LL^{\mathsf T}$ で作れる。各粒子に独立な雑音を与えたり、成分ごとに平方根を取ったりすると、共分散は $M$ にならない。中心線上に並んだ二球（RPY 移動度）で、中心線方向の変位を多数回抽出して比べる。</p>
+  </div>
+  <div class="controls" id="pair-controls"></div>
+  <div class="grid side">
+    <div class="card"><div id="pair-scatter"></div><p class="caption">点は一回ごとの変位 $(\Delta X_1,\Delta X_2)$ を $\sqrt{2D_0\Delta t}$ で割ったもの。右上がりに伸びた雲は、二球が同じ向きに動きやすいことを表す。</p></div>
+    <div class="card"><h3>共分散</h3><div id="pair-out"></div></div>
+  </div>
+
+  <h3>近づいた二球は互いに近づきにくい</h3>
+  <div class="prose">
+    <p>相対変位 $\Delta X_2-\Delta X_1$ の分散は $2k_BT(M_{11}+M_{22}-2M_{12})\Delta t$ で、中心線方向では、ページ9の接近モードの抵抗 $6\pi\mu a(X^A_{11}-X^A_{12})$ の逆数で決まる。すき間が狭くなると潤滑で抵抗が発散するので、相対拡散は 0 に近づく。RPY ではこの効果が出ない。</p>
+  </div>
+  <div class="card"><div id="rel-plot"></div><p class="caption">相対拡散係数 $D_{\mathrm{rel}}$ を $D_0$ で割った値。独立な二粒子なら 2。厳密な値は $2/(X^A_{11}-X^A_{12})$ で、JO 級数が収束した範囲だけを描いた。すき間がさらに狭いところは、潤滑の最低次 $X^A_{11}-X^A_{12}\approx a/(2h)$ で近づく（対数の補正があるので、$h/a\sim0.1$ ではまだずれる）。</p></div>
+
+  <h2>沈降平衡と熱ドリフト</h2>
+  <div class="prose">
+    <p>重力で沈む希薄な粒子を考える（上向きを $z$、浮力を差し引いた重さを $m_bg$）。粒子は下に沈もうとし、拡散は一様に広げようとする。等温系で最小になるのは、エネルギーとエントロピーをまとめた自由エネルギー</p>
+    $$\mathcal F[c]=\int\left[k_BT\,c\left(\ln\frac{c}{c_*}-1\right)+m_bgz\,c\right]dz$$
+    <p>であり、粒子数を一定に保って最小化すると、ボルツマン分布 $c\propto e^{-z/\ell_g}$、$\ell_g=k_BT/(m_bg)$ が出てくる。移動度 $M(z)$ は平衡に近づく速さを決めるだけで、行き着く分布には現れない。</p>
+    <p>一方、上の式の熱ドリフト $k_BT\,\partial M/\partial z$ を省いて乱数だけを足すと、流束が 0 になる分布は $e^{-z/\ell_g}/M(z)$ になり、移動度の小さい場所（壁の近く）に粒子がたまる。ここでは壁の近くで移動度が下がる簡単なモデル $M(z)=M_0\left(1-\beta e^{-2z/\ell_g}\right)$ を使い、$3000$ 個の粒子を動かして確かめる。</p>
+  </div>
+  <div class="controls" id="sed-controls"></div>
+  <div class="grid two">
+    <div class="card"><div id="sed-hist"></div></div>
+    <div class="card"><div id="sed-time"></div><p class="caption">粒子は高さ $2<z<4$ の帯から出発する。破線は、行き着く先の候補となる二つの分布の平均。</p></div>
+  </div>
+  <div id="sed-out"></div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>決定論の時間積分に乱数を足せばブラウン動力学になる、と考える</strong>移動度が位置によって変わるなら、熱ドリフト $k_BT\nabla\cdot M$ が必要である。省くと、平衡分布そのものが変わってしまう。潤滑や壁を含む移動度では、この項を改めて評価しなければならない。</div>
+  <div class="pitfall"><strong>粘度を上げると沈殿が減る、と考える</strong>粘度は沈降の速さも拡散の速さも同じ割合で変えるので、平衡の分布（$\ell_g$）は変わらない。変わるのは平衡に達するまでの時間だけである。</div>
+  <div class="pitfall"><strong>各粒子に独立な雑音を与える</strong>流体を介した相関を無視すると、二粒子の相対的な動きを誤る。共分散は移動度行列の全体で決まる。</div>
+</main>
+</body>
+</html>
