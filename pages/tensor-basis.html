@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>テンソルは基底によらない</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/tensor-basis.js"></script>
+</head>
+<body>
+<main>
+  <h1>1. テンソルは基底によらない</h1>
+  <p class="lead">二階テンソルは、二つのベクトルを受け取って一つの数を返し、どちらの引数についても線形な写像である。成分は、その写像に基底ベクトルを代入した値にすぎない。基底を回すと成分は変わるが、写像が返す値は変わらない。ページ8で抵抗行列の成分が「向きを回すだけで変わる」のは、このためである。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>成分は基底への代入で決まる</h2>
+  <div class="prose">
+    <p>双線形な写像 $\mathcal T(\boldsymbol a,\boldsymbol b)$ に、基底で展開した $\boldsymbol a=a_i\boldsymbol e_i$、$\boldsymbol b=b_j\boldsymbol e_j$ を入れると、各引数の線形性から</p>
+    $$\mathcal T(\boldsymbol a,\boldsymbol b)=a_ib_j\,\mathcal T(\boldsymbol e_i,\boldsymbol e_j)=a_iT_{ij}b_j,\qquad T_{ij}=\mathcal T(\boldsymbol e_i,\boldsymbol e_j)$$
+    <p>となる。別の正規直交基底 $\boldsymbol e'_i=Q_{ij}\boldsymbol e_j$ を代入すれば、新しい成分は</p>
+    $$T'_{ij}=\mathcal T(\boldsymbol e'_i,\boldsymbol e'_j)=Q_{ik}Q_{j\ell}T_{k\ell},\qquad T'=QTQ^{\mathsf T},\qquad \boldsymbol a'=Q\boldsymbol a$$
+    <p>である。$Q^{\mathsf T}Q=I$ を使うと $\boldsymbol a'^{\mathsf T}T'\boldsymbol b'=\boldsymbol a^{\mathsf T}T\boldsymbol b$ となり、写像の値は基底によらない。トレース $T_{ii}$ や二重縮約 $T_{ij}S_{ij}$ も同じ理由で変わらない。</p>
+  </div>
+
+  <h2>基底を回してみる</h2>
+  <div class="controls" id="controls"></div>
+  <div class="grid side">
+    <div class="card">
+      <h3>基底とベクトル</h3>
+      <div id="scene"></div>
+      <p class="caption">灰色が元の基底 $\boldsymbol e_1,\boldsymbol e_2$、青が回した基底 $\boldsymbol e'_1,\boldsymbol e'_2$。橙が $\boldsymbol a$、紫が $\boldsymbol b$。矢印そのものは基底を回しても動かない。</p>
+    </div>
+    <div class="card">
+      <h3>成分と、基底によらない量</h3>
+      <div class="grid two" style="gap:8px">
+        <div><div class="caption">元の基底での成分 $T$</div><div id="m-orig"></div></div>
+        <div><div class="caption">回した基底での成分 $T'=QTQ^{\mathsf T}$</div><div id="m-new"></div></div>
+      </div>
+      <div id="invariants"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>回転角による成分の変化</h3>
+    <div id="plot"></div>
+    <p class="caption">四つの成分は回転角とともに変わるが、トレース（点線）は一定である。対称な部分の固有値の方向まで回すと、非対角成分の対称な部分が消える。</p>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>成分の行列をテンソルそのものと思う</strong>同じテンソルでも、基底が違えば成分の行列は違う。成分が変わったことは、物理が変わったことを意味しない。ページ8で対の向きを回したとき、抵抗行列の実験室系の成分は変わるが、中心線方向・垂直方向の係数 $X,Y$ は変わらなかった。</div>
+  <div class="pitfall"><strong>二次形式も線形だと思う</strong>$q(\boldsymbol a)=\mathcal T(\boldsymbol a,\boldsymbol a)$ は、同じベクトルを二つの引数に入れた関数で、$q(2\boldsymbol a)=4q(\boldsymbol a)$ となる。「各引数について線形」と「関数全体が線形」は別のことである。</div>
+  <div class="pitfall"><strong>向きによって応答が変わらなければテンソルでない、と思う</strong>$T=cI$ は、どの基底でも成分が同じになる等方的なテンソルである。孤立球の移動度 $I/(6\pi\mu a)$ もその例である。</div>
+</main>
+</body>
+</html>
