@@ -18,14 +18,16 @@ three.js と KaTeX は `vendor/` に固定版を同梱しているので、CDN �
 
 ## 公開（GitHub Pages）
 
-ビルドは不要。`main` に push されるたびに `.github/workflows/pages.yml` がテストを実行し、サイトに必要なファイル（`index.html`、`pages/`、`src/`、`vendor/`）だけを GitHub Pages に配信する。`reference/`（Julia 実習）、`docs/`、`scripts/`、`test/` は配信されない。
+ビルドは不要。`.github/workflows/site.yml` が、プルリクエストではテストと配信ファイルの確認（`scripts/check-site.mjs`：HTML と JS が参照するファイルがすべて含まれているか）を行い、`main` への push ではさらに、サイトに必要なファイル（`index.html`、`pages/`、`src/`、`vendor/katex/`）だけを GitHub Pages に配信する。`reference/`（Julia 実習）、`docs/`、`scripts/`、`test/` は配信されない。ルートにサイト用のファイルを足したときは、このワークフローの配信リストにも加える（足し忘れると確認が失敗する）。
 
-1. リポジトリの Settings → Pages を開く。
-2. Build and deployment の Source を「GitHub Actions」にする。
-3. Actions タブで「pages」ワークフローを選び、Run workflow を押す（以後は `main` へのマージのたびに自動で更新される）。
-4. `https://env-colloid-eng-lab.github.io/stokes-flow-interactive/` で公開される。
+1. リポジトリの Settings → Pages を開き、Build and deployment の Source を「GitHub Actions」にする。
+2. Actions タブで「site」ワークフローを選び、Run workflow を押す（以後は `main` へのマージのたびに自動で更新される）。
+3. `https://env-colloid-eng-lab.github.io/stokes-flow-interactive/` で公開される。
 
-リポジトリを非公開にしてもサイトは公開のままにできるが、それには組織が GitHub Team 以上のプランである必要がある（Free では非公開リポジトリの Pages は使えない）。サイトの JavaScript はブラウザに送られるので、`src/` の中身は誰でも読める点に注意。
+**リポジトリは現在、公開設定である**。コミットした内容はすぐに誰でも見られる。非公開にしてもサイトは公開のままにできるが、それには組織が GitHub Team 以上のプランである必要がある（Free では非公開リポジトリの Pages は使えない）。注意：
+
+- サイトの JavaScript はブラウザに送られるので、`src/` の中身は誰でも読める。
+- 公開中に作られたフォークや手元の複製は、非公開にした後もそのまま残る。
 
 ## テスト
 

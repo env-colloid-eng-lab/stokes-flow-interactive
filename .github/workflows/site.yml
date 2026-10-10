@@ -1,0 +1,47 @@
+# Test, then publish only the files the site needs (index.html, pages/, src/, vendor/katex/) to
+# GitHub Pages. reference/ (Julia labs), docs/, scripts/ and test/ are not served.
+# Pull requests run the tests and the site check; pushes to main also deploy.
+# Settings -> Pages -> Source must be "GitHub Actions".
+name: site
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Collect the site files
+        run: |
+          mkdir -p _site/vendor
+          cp -r index.html pages src _site/
+          cp -r vendor/katex _site/vendor/
+      - run: node scripts/check-site.mjs _site
+      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
