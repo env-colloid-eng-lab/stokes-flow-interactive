@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>球を引っ張って動かす</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/live.js"></script>
+</head>
+<body>
+<main>
+  <h1>14. 球を引っ張って動かす</h1>
+  <p class="lead">球を一つドラッグすると、その球だけに力がかかる。それなのに、触れていない周りの球まで動き出す。力を受けない球が流体に運ばれて動く様子を、手で動かして確かめる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>動かしてみる</h2>
+  <div class="prose">
+    <p><strong>球をドラッグ</strong>すると、指（マウス）の位置へばねで引っ張る力がその球にかかる。<strong>空いた所をクリック</strong>すると球が増える（「クリック」を「削除」にすると、クリックした球が消える）。どの球も、ドラッグ中の力と重力のほかには外から力を受けない。</p>
+  </div>
+  <div class="controls" id="live-controls"></div>
+  <div class="grid wide">
+    <div class="card">
+      <div id="live-scene"></div>
+      <div class="controls" id="live-view"></div>
+      <p class="caption">赤い矢印は球の速度、灰色の矢印は流れの速度（遠方で静止している流体に対する値）。矢印の長さは、いちばん速い球を基準にした相対値。破線は軌跡。</p>
+      <p class="caption" id="live-note"></p>
+    </div>
+    <div class="card">
+      <h3>速さ</h3>
+      <div id="live-table"></div>
+      <p class="caption">速さの単位は $F_0/(6\pi\mu a)$（力 $F_0$ を受けた孤立球の速さ）。比は、引っ張っている球の速さに対する値。相互作用「なし」では、引っ張っていない球の比は 0 になる。</p>
+    </div>
+  </div>
+
+  <h2>何が起きているか</h2>
+  <div class="prose">
+    <p>球 $\alpha$ に外から力 $F_\alpha$ がかかると、球は同じ大きさの力で流体を押す。ストークス流れでは慣性がないので、各球は「外力 + 流体から受ける力 = 0」を満たす速さで動く。速度は力と移動度行列で結ばれる（<a href="pair-mobility.html">8.</a>）。</p>
+    $$U_\beta=\sum_\alpha M_{\beta\alpha}F_\alpha$$
+    <p>引っ張っていない球 $\beta$ は $F_\beta=0$ でも、$M_{\beta\alpha}F_\alpha$ の分だけ動く。流体から受ける力の合計は 0 のまま、周りの流れに乗って運ばれている（<a href="faxen.html">7.</a> の Faxén 則）。</p>
+    <p>「相互作用」では $M$ の作り方を選ぶ。</p>
+    <ul>
+      <li><strong>なし</strong>：$M_{\beta\alpha}=0\ (\beta\ne\alpha)$。各球は自分にかかった力だけで動く。</li>
+      <li><strong>RPY</strong>（案A）：遠方の相互作用を二体の和で表す。離れた球どうしでは十分よいが、近づいたときの潤滑は表せない。</li>
+      <li><strong>SD（案B）</strong>：遠方を回転込みの RPY で表し、近い対を Jeffrey–Onishi の厳密な二球抵抗で補正する（<a href="sd-structure.html">11.</a>、<a href="many-body.html">10.</a>）。球は自由に回る。押し付けた二球の間の流体はなかなか抜けないので、二球がひとかたまりになって動く。</li>
+    </ul>
+    <p>灰色の矢印は、各球にかかる力が作る流れ $\sum_\alpha(1+\tfrac{a^2}{6}\nabla^2)\,G(x-x_\alpha)\cdot F_\alpha$ である（<a href="oseen.html">5.</a>、<a href="faxen.html">7.</a>）。球が一つなら厳密で、表面ではちょうど球の速さに一致する。球が近いと、球どうしの反射の分だけずれる。</p>
+    <p>球どうしが重ならないように、隙間が $0.05a$ 程度より狭くなると効き始める短距離の反発力を、どのモデルにも加えている。流体力学ではなく、実際の粒子の表面力の代わりである。</p>
+  </div>
+
+  <h2>やってみよう</h2>
+  <div class="prose">
+    <ol>
+      <li><strong>向きで変わる引きずり</strong>：「二球」で、球 1 を中心線の方向に引っ張り、次に中心線と垂直に引っ張る。相手の速さの比を比べる。遠方では、中心線方向が $3a/(2r)$、垂直方向が $3a/(4r)$ で、中心線方向のほうが 2 倍強い。</li>
+      <li><strong>遠くまで届く</strong>：「一列」で端の球を引く。比は $1/r$ でゆっくりしか減らないので、離れた球まで動く。「なし」に切り替えて比べる。</li>
+      <li><strong>押し付ける</strong>：「二球」で、球 1 を相手に向かってゆっくり押し、表の「最小の隙間」と相手の速さの比を見る。RPY では、隙間が狭まっても比は 0.62 程度で頭打ちになり、隙間はほぼ一定の速さで詰まる。SD（案B）では、隙間の流体を押し出すのに大きな力が要るので、比は隙間 $0.1a$ で 0.84、$0.05a$ で 0.9 と 1 に近づき、隙間が詰まる速さは隙間に比例して遅くなる。最後に止まるのは、どのモデルでも反発力が効くところである。</li>
+      <li><strong>並んで沈む</strong>：重力を入れ、「視点」を「重心を追う」にする。水平に並んだ二球は、一球より速く、並んだまま沈む。斜めに並べると、横にずれながら沈む。</li>
+      <li><strong>雲</strong>：「雲」で重力を入れる。まとまった球は一つの大きな塊のように、一球より速く沈む。しばらく見ていると、縁の球が少しずつ取り残される。</li>
+    </ol>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>動いている球には力がかかっている、と考える</strong>ストークス流れでは、引っ張っていない球は力を受けずに動く。流体から受ける力の合計が 0 になる速さ、つまり周りの流れの速さ（Faxén 則で表面平均したもの）で運ばれている。</div>
+  <div class="pitfall"><strong>近づいても RPY で十分、と考える</strong>RPY は二球の隙間の流体が抜けにくいことを表せない。押し付けたときの相手の動きは、モデルによって大きく違う。近接での正しい抵抗は <a href="pair-approach.html">9.</a> と <a href="model-compare.html">13.</a> を参照。</div>
+</main>
+</body>
+</html>

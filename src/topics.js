@@ -6,6 +6,7 @@ export const parts = [
   { id: "multi", title: "多粒子編：抵抗行列と移動度行列" },
   { id: "fluct", title: "揺らぎ" },
   { id: "compare", title: "モデルを比べる" },
+  { id: "play", title: "動かして確かめる" },
 ];
 
 // status: "ready" | "planned"
@@ -36,6 +37,8 @@ export const pages = [
     title: "揺らぎと平衡", desc: "相関ブラウン変位と熱ドリフト", sec: "第15章" },
   { id: "p13", num: 13, part: "compare", status: "ready", file: "model-compare.html",
     title: "案A と案B を比べる", desc: "RPY 逆行列と Jeffrey–Onishi の厳密関数を 12×12 で比べる", sec: "第13・14章の先" },
+  { id: "p14", num: 14, part: "play", status: "ready", file: "live.html",
+    title: "球を引っ張って動かす", desc: "ドラッグした球に周りの球がついてくる。相互作用なし・RPY・SD を切り替える", sec: "第8・14章の応用" },
 ];
 
 // from -> to : the result produced in `from` and how `to` uses it.
@@ -61,6 +64,10 @@ export const links = [
   { from: "p9", to: "p13", result: "JO 級数と潤滑", use: "全 10 関数の近接特異性を分けて足す" },
   { from: "p11", to: "p13", result: "Schur 補行列", use: "回転を消去して案A と同じ条件で比べる" },
   { from: "p6", to: "p13", result: "ストレスレット", use: "X^A₁₁ が r⁻⁴ から違い始める理由" },
+  { from: "p5", to: "p14", result: "オゼーンテンソル G", use: "力を受けた球が作る流れが 1/r でゆっくり減衰する" },
+  { from: "p7", to: "p14", result: "Faxén 則", use: "力を受けない球が周りの流れに乗って動く" },
+  { from: "p8", to: "p14", result: "U = MF と RPY の対の移動度", use: "引っ張る向きで相手の動きが変わる（中心線方向は 2 倍）" },
+  { from: "p10", to: "p14", result: "SD 型の多体抵抗", use: "押し付けた二球が潤滑でひとかたまりに動く" },
 ];
 
 export const pageById = (id) => pages.find((p) => p.id === id);
