@@ -2,7 +2,7 @@ import { initPage, h, field, segmented, slider, fmt } from "../ui/page.js";
 import { createScene } from "../ui/scene2d.js";
 import { norm, vsub } from "../core/linalg.js";
 import { mulberry32 } from "../core/random.js";
-import { velocities, advance, minGap, repulsion, flowAt } from "../models/live.js";
+import { velocities, advance, minGap, totalForces, flowAt } from "../models/live.js";
 
 initPage("p14");
 
@@ -29,16 +29,19 @@ function cloud(n, R, dmin, seed) {
 
 const st = {
   preset: "pair", model: "rpy", click: "add", gravity: 0, speed: 1, field: true, trails: true, follow: false,
-  X: [], trails0: [], drag: null, anim: null, U: null, F: null, note: "",
+  X: [], trails0: [], drag: null, anim: null, U: null, F: null, note: "", flash: null, cache: null,
   view: { cx: 0, cz: 0, span: 26 },
 };
 // a narrow screen shows less of the plane, so that the spheres stay large enough to grab
 const baseSpan = () => (scene.svg.clientWidth && scene.svg.clientWidth < 520 ? 20 : 26);
 const homeView = () => ({ cx: 0, cz: 0, span: baseSpan() });
 
-const scene = createScene(document.getElementById("live-scene"), { width: 640, height: 460 });
+const W = 640, H = 460;
+const scene = createScene(document.getElementById("live-scene"), { width: W, height: H });
 scene.svg.style.touchAction = "none"; // let the pointer drag spheres instead of scrolling the page
 const note = document.getElementById("live-note");
+// a short message that survives the redraws of the running animation for a few seconds
+const flash = (text) => { st.flash = { text, until: performance.now() + 3000 }; draw(); };
 const table = document.getElementById("live-table");
 
 const modelSeg = segmented([["none", "なし"], ["rpy", "RPY（案A）"], ["sd", "SD（案B）"]], st.model, (v) => setModel(v));
@@ -57,7 +60,7 @@ document.getElementById("live-view").append(
 function setModel(m) {
   if (st.X.length > MAXN[m]) {
     modelSeg.set(st.model);
-    note.textContent = `SD（案B）で扱える球は ${MAXN.sd} 個まで。球を減らしてから切り替える。`;
+    flash(`SD（案B）で扱える球は ${MAXN.sd} 個まで。球を減らしてから切り替える。`);
     return;
   }
   st.model = m;
@@ -87,10 +90,7 @@ function externalForces(X) {
     return f;
   });
 }
-const totalForces = (X) => {
-  const Fe = externalForces(X), Fr = repulsion(X, { a, F0 });
-  return Fe.map((f, p) => f.map((v, k) => v + Fr[p][k]));
-};
+const forcesNow = (X) => totalForces(X, externalForces, { a, F0 });
 
 // ---- pointer -------------------------------------------------------------------------------
 const hit = ([x, z]) => st.X.findIndex((p) => Math.hypot(p[0] - x, p[2] - z) <= a);
@@ -98,11 +98,15 @@ scene.svg.addEventListener("pointerdown", (e) => {
   const w = scene.toWorld(e, st.view), i = hit(w);
   if (i >= 0 && st.click === "remove") {
     st.X.splice(i, 1); st.trails0.splice(i, 1);
+    if (st.drag) {
+      if (st.drag.index === i) st.drag = null;
+      else if (st.drag.index > i) st.drag.index--;
+    }
     wake();
     return;
   }
   if (i >= 0) {
-    st.drag = { index: i, target: w, id: e.pointerId };
+    st.drag = { index: i, target: w, id: e.pointerId, ptr: { clientX: e.clientX, clientY: e.clientY } };
     scene.svg.setPointerCapture(e.pointerId);
     wake();
     return;
@@ -110,11 +114,11 @@ scene.svg.addEventListener("pointerdown", (e) => {
   if (st.click !== "add") return;
   const p = [w[0], 0, w[1]];
   if (st.X.length >= MAXN[st.model]) {
-    note.textContent = `この相互作用で置ける球は ${MAXN[st.model]} 個まで。`;
+    flash(`この相互作用で置ける球は ${MAXN[st.model]} 個まで。`);
     return;
   }
   if (st.X.some((q) => norm(vsub(p, q)) < 2 * a + 0.2)) {
-    note.textContent = "ほかの球と重なる位置には置けない。";
+    flash("ほかの球と重なる位置には置けない。");
     return;
   }
   st.X.push(p); st.trails0.push([[p[0], p[2]]]);
@@ -122,6 +126,7 @@ scene.svg.addEventListener("pointerdown", (e) => {
 });
 scene.svg.addEventListener("pointermove", (e) => {
   if (!st.drag || e.pointerId !== st.drag.id) return;
+  st.drag.ptr = { clientX: e.clientX, clientY: e.clientY };
   st.drag.target = scene.toWorld(e, st.view);
 });
 const release = (e) => { if (st.drag && e.pointerId === st.drag.id) { st.drag = null; wake(); } };
@@ -146,18 +151,25 @@ function wake() {
 
 function tick(dt) {
   if (!st.X.length) { st.U = null; return false; }
+  // the pointer stays where it is on the screen while the view follows the spheres
+  if (st.drag) st.drag.target = scene.toWorld(st.drag.ptr, st.view);
+  const key = JSON.stringify([st.model, st.gravity, st.drag && [st.drag.index, st.drag.target]]);
   try {
     if (dt > 0) {
-      const s = advance(st.X, externalForces, st.model, dt, { a, mu, F0, maxSub: st.model === "sd" ? 3 : 12 });
+      // velocities of the last drawn state, if the forces have not changed since
+      const U0 = st.cache && st.cache.X === st.X && st.cache.key === key ? st.cache.U : null;
+      const s = advance(st.X, externalForces, st.model, dt, { a, mu, F0, U0, maxSub: st.model === "sd" ? 3 : 12 });
       st.X = s.X;
       st.note = s.t < 0.5 * dt ? "球が近いので、時間をゆっくり進めている。" : "";
       st.X.forEach((p, i) => { st.trails0[i].push([p[0], p[2]]); if (st.trails0[i].length > 600) st.trails0[i].shift(); });
     }
-    st.F = totalForces(st.X);
+    st.F = forcesNow(st.X);
     st.U = velocities(st.X, st.F, st.model, { a, mu });
+    st.cache = { X: st.X, key, U: st.U };
   } catch (err) {
     st.note = `計算できなかった（${err.message}）。`;
     st.drag = null;
+    st.U = null;
     return false;
   }
   if (st.follow) {
@@ -170,7 +182,8 @@ function tick(dt) {
 
 // ---- drawing -------------------------------------------------------------------------------
 function draw() {
-  const { X, U, F, view } = st;
+  const { X, F, view } = st;
+  const U = st.U && st.U.length === X.length ? st.U : null; // a sphere just added has no velocity yet
   const spheres = X.map((p, i) => ({
     x: p[0], z: p[2], a, label: `${i + 1}`,
     fill: st.drag?.index === i ? "var(--warn-soft)" : undefined,
@@ -180,7 +193,7 @@ function draw() {
   const vmax = U ? Math.max(1e-9, ...U.map((u) => norm(u))) : 1;
   const vscale = 2.5 / Math.max(vmax, 0.5); // the fastest sphere gets an arrow of 2.5a (or less)
   if (st.field && U && X.length) {
-    const sp = 2, half = view.span / 2, halfZ = (view.span * 460) / 640 / 2;
+    const sp = 2, half = view.span / 2, halfZ = (view.span * H) / W / 2;
     for (let x = Math.ceil((view.cx - half) / sp) * sp; x <= view.cx + half; x += sp)
       for (let z = Math.ceil((view.cz - halfZ) / sp) * sp; z <= view.cz + halfZ; z += sp) {
         const u = flowAt([x, 0, z], X, F, { a, mu });
@@ -198,7 +211,8 @@ function draw() {
   }
   const paths = st.trails ? st.trails0.map((t) => ({ points: t, color: "var(--c1)", width: 1, dash: "2 3" })) : [];
   scene.draw({ view, spheres, arrows, paths, lines });
-  note.textContent = st.note || (X.length ? "" : "空いた所をクリックして球を置く。");
+  const fl = st.flash && performance.now() < st.flash.until ? st.flash.text : "";
+  note.textContent = fl || st.note || (X.length ? "" : "空いた所をクリックして球を置く。");
   renderTable();
 }
 
@@ -206,7 +220,7 @@ let tableFrame = 0;
 function renderTable() {
   if (tableFrame++ % 6 && st.anim) return; // while running, the numbers need not change every frame
   const { X, U } = st;
-  if (!U || !X.length) { table.replaceChildren(); return; }
+  if (!U || U.length !== X.length || !X.length) { table.replaceChildren(); return; }
   const ref = st.drag ? st.drag.index : null;
   const uref = ref != null ? norm(U[ref]) : null;
   const rows = X.map((_, i) => h("tr", {},

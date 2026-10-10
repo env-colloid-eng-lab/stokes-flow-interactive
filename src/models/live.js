@@ -43,27 +43,38 @@ export function repulsion(X, { a = 1, F0 = 1, strength = 20, range = 0.02 } = {}
   return F;
 }
 
+/** External forces plus the repulsion, as used for the motion (and for the drawn flow). */
+export function totalForces(X, forceFn, { a = 1, F0 = 1 } = {}) {
+  const Fe = forceFn(X), Fr = repulsion(X, { a, F0 });
+  return Fe.map((f, p) => f.map((v, k) => v + Fr[p][k]));
+}
+
 /**
- * Advance by dt (or less: the step is cut so that no sphere moves more than a fraction of the
+ * Advance by dt (or less: each substep is cut so that no sphere moves more than a fifth of the
  * smallest gap, and at most maxSub substeps are taken). forceFn: X -> external forces.
+ * U0, if given, are the velocities at X for the same forces (saves one solve).
  * Returns { X, t } with the simulated time actually advanced.
  */
-export function advance(X, forceFn, model, dt, { a = 1, mu = 1, maxSub = 20, F0 = 1 } = {}) {
-  const total = (Y) => {
-    const Fe = forceFn(Y), Fr = repulsion(Y, { a, F0 });
-    return Fe.map((f, p) => f.map((v, k) => v + Fr[p][k]));
-  };
-  const vel = (Y) => velocities(Y, total(Y), model, { a, mu });
-  let t = 0;
+export function advance(X, forceFn, model, dt, { a = 1, mu = 1, maxSub = 20, F0 = 1, U0 = null } = {}) {
+  const vel = (Y) => velocities(Y, totalForces(Y, forceFn, { a, F0 }), model, { a, mu });
+  let t = 0, U = U0;
   for (let n = 0; n < maxSub && t < dt; n++) {
-    const U = vel(X);
+    U ??= vel(X);
     const vmax = Math.max(1e-12, ...U.map((u) => norm(u)));
-    // move at most 20% of the gap (but allow 0.002a even when touching) and 0.2a per substep
-    const step = Math.min(dt - t, (0.2 * Math.min(Math.max(minGap(X, a), 0.01), 1)) / vmax);
-    const next = heunStep(X, (Y) => (Y === X ? U : vel(Y)), step);
-    if (minGap(next, a) <= 0) break; // keep the last separated state
+    let step = Math.min(dt - t, (0.2 * Math.min(Math.max(minGap(X, a), 1e-4), 1)) / vmax);
+    let next = null;
+    // a predictor that overlaps (or a solve that fails there) halves the step
+    for (let tries = 0; tries < 8; tries++) {
+      try {
+        const Y = heunStep(X, (Z) => (Z === X ? U : vel(Z)), step);
+        if (minGap(Y, a) > 0) { next = Y; break; }
+      } catch { /* overlapping predictor: try a smaller step */ }
+      step /= 2;
+    }
+    if (!next) break; // keep the last separated state
     X = next;
     t += step;
+    U = null;
   }
   return { X, t };
 }

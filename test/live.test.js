@@ -57,3 +57,13 @@ test("repulsion: equal and opposite, short ranged", () => {
 test("one sphere under a force moves at F / (6 pi mu a) in every model", () => {
   for (const model of ["none", "rpy", "sd"]) close(velocities([[1, 2, 3]], [[0, 0, -six]], model)[0][2], -1, 1e-12, model);
 });
+
+test("time stepping from a very small gap: no overlap and no failed solve", () => {
+  for (const model of ["rpy", "sd"])
+    for (const g of [0.003, 0.006, 0.009]) {
+      const X0 = [[0, 0, 0], [2 + g, 0, 0]];
+      const s = advance(X0, () => [[30 * six, 0, 0], [0, 0, 0]], model, 0.05, { F0: six, maxSub: 10 });
+      assert.ok(minGap(s.X) > 0, `${model} gap ${g}: ${minGap(s.X)}`);
+      assert.ok(s.t > 0, `${model} gap ${g}: time advanced`);
+    }
+});

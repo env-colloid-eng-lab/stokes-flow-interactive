@@ -49,7 +49,7 @@ export function createScene(container, { width = 480, height = 340 } = {}) {
       layer.append(s("path", { d, fill: "none", stroke: p.color ?? "var(--muted)", "stroke-width": p.width ?? 1.5, "stroke-dasharray": p.dash ?? null }));
     }
     for (const sp of spheres) {
-      layer.append(s("circle", { cx: X(sp.x), cy: Z(sp.z), r: sp.a * k, fill: sp.fill ?? "var(--accent-soft)", stroke: sp.stroke ?? "var(--accent)", "stroke-width": sp.strokeWidth ?? 1.5 }));
+      layer.append(s("circle", { cx: X(sp.x), cy: Z(sp.z), r: sp.a * k, fill: sp.fill ?? "var(--accent-soft)", stroke: sp.stroke ?? "var(--accent)", "stroke-width": 1.5 }));
       if (sp.label) layer.append(s("text", { x: X(sp.x), y: Z(sp.z) + 4, "text-anchor": "middle", style: "font-size:13px;font-weight:700;fill:var(--ink)" }, sp.label));
     }
     for (const a of arrows) {
