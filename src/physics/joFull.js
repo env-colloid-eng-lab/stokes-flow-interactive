@@ -10,7 +10,10 @@
 // (4.15)-(4.16), (5.5)-(5.6), (6.9)-(6.10), (7.9)-(7.10), at lambda = 1, except one: for Y^C_12 the
 // printed xi ln(1/xi) coefficient g5 is twice the value the series itself requires. With the printed
 // value the remainder decays like 1/m^2 times a large constant (convergence ~1/K); with g5 = 31/500 it
-// decays like the other nine functions (tested in test/joFull.test.js).
+// decays like the other nine functions (tested in test/joFull.test.js). This is the correction
+// g5 = (2/125) lambda (43 - 24 lambda + 43 lambda^2)(1 + lambda)^-4 of Townsend (arXiv:1802.08226,
+// eq. 30; Phys. Fluids 35, 127126, 2023). His corrected recurrence for V (eq. 18) is the one used in
+// joRecurrence.js.
 //
 // Normalisation (JO 1.7): A11 = 6 pi mu a XA11, A12 = 6 pi mu a XA12 (equal spheres), B = 4 pi mu a^2 Y^B,
 // C = 8 pi mu a^3 X^C, Y^C. Forces and torques are those the spheres exert on the fluid.

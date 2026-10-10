@@ -7,6 +7,7 @@ import { mulberry32 } from "../core/random.js";
 import { mobility, mobilityVelocity, flatten, unflatten } from "../physics/rpy.js";
 import { heunStep } from "../physics/integrate.js";
 import { resistance, pairwiseSumResistance, axialManyBody, invertMobility, axialComponents } from "../models/manyBody.js";
+import { sdTranslationalFT, sdBundle } from "../models/sdFT.js";
 
 initPage("p10");
 
@@ -101,7 +102,7 @@ function resetSed() {
 const sc = document.getElementById("sed-controls");
 sc.append(
   field("配置", segmented(Object.entries(SCEN).map(([k, s]) => [k, s.name]), sed.scen, (v) => { sed.scen = v; resetSed(); })),
-  field("近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], sed.model, (v) => { sed.model = v; resetSed(); })));
+  field("近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"], ["sd", "SD（案B、回転込み）"]], sed.model, (v) => { sed.model = v; resetSed(); })));
 document.getElementById("sed-matrix-controls").append(
   field("表示", segmented([["R", "R"], ["R2B", "二体の和 R²ᴮ"], ["diff", "差 R − R²ᴮ"]], sed.show, (v) => { sed.show = v; renderSed(); })));
 
@@ -155,36 +156,60 @@ function minGap(X) {
   return g;
 }
 
+// velocities for the selected model; SD (model B) solves the force-torque resistance problem
+// with torque-free spheres instead of applying a mobility
+// The velocities of the configuration last shown by compute() are reused by the next step's first stage.
+let lastU = null;
+function velocities(X) {
+  if (lastU && lastU.X === X && lastU.model === sed.model) return lastU.U;
+  if (sed.model === "sd") return unflatten(solve(sdTranslationalFT(X, { a, mu }), flatten(force())));
+  return mobilityVelocity(X, force(), { a, mu, model: sed.model });
+}
+// SD keeps lubrication, so the spheres may come much closer before the integration is stopped
+const stopGap = () => (sed.model === "sd" ? 2e-3 : 0.05);
+
 function advanceSed(dt) {
   if (!(dt > 0)) return; // the first animation frame has no elapsed time
-  const vfun = (X) => mobilityVelocity(X, force(), { a, mu, model: sed.model });
-  const nsub = Math.max(1, Math.ceil(dt / 0.25));
+  // the step should be small compared with the gap; near contact the simulated time runs slower
+  // rather than the animation stalling (an SD evaluation costs ~5 ms for eight spheres)
+  const step = Math.min(0.25, Math.max(0.01, minGap(sed.X)));
+  const nsub = Math.min(sed.model === "sd" ? 6 : 20, Math.max(1, Math.ceil(dt / step)));
+  const dts = Math.min(step, dt / nsub);
   for (let k = 0; k < nsub; k++) {
-    const next = heunStep(sed.X, vfun, dt / nsub);
+    const next = heunStep(sed.X, velocities, dts);
     const g = minGap(next);
-    if (g < 0.05) {
+    if (g < stopGap()) {
       // keep the last state that was still separated
-      sed.stopped = `球どうしの隙間が ${g > 0 ? g.toPrecision(2) + "a" : "なくなる"}ところまで近づいたので、その手前で止めた。ここから先は近接の扱い（9.）が必要になる。`;
+      sed.stopped = sed.model === "sd"
+        ? `球どうしの隙間が ${g > 0 ? g.toPrecision(2) + "a" : "なくなる"}まで狭まったので止めた。SD は潤滑で接触を防ぐが、この先は時間刻みを隙間に合わせて細かくする必要がある。`
+        : `球どうしの隙間が ${g > 0 ? g.toPrecision(2) + "a" : "なくなる"}ところまで近づいたので、その手前で止めた。ここから先は近接の扱い（9.）が必要になる。`;
       stopSed();
       break;
     }
     sed.X = next;
-    sed.t += dt / nsub;
+    sed.t += dts;
   }
   sed.X.forEach((p, i) => { sed.trails[i].push([p[0], p[2]]); if (sed.trails[i].length > 1500) sed.trails[i].shift(); });
 }
 
 let cur = null;
 function compute() {
-  const M = mobility(sed.X, { a, mu, model: sed.model }); // built once, reused for R, eigenvalues and U
-  const R = invertMobility(M);
-  const R2B = pairwiseSumResistance(sed.X, { a, mu, model: sed.model });
+  let M, R, R2B;
+  if (sed.model === "sd") {
+    ({ R, R2B } = sdBundle(sed.X, { a, mu })); // each exact pair built once
+    M = invertMobility(R);
+  } else {
+    M = mobility(sed.X, { a, mu, model: sed.model }); // built once, reused for R, eigenvalues and U
+    R = invertMobility(M);
+    R2B = pairwiseSumResistance(sed.X, { a, mu, model: sed.model });
+  }
   const ev = eigvalsSym(M);
   const scale = (A) => A.map((row) => row.map((v) => v / unit));
   cur = {
     R: scale(R), R2B: scale(R2B), diff: scale(sub(R, R2B)), evMin: ev[0] * unit, evMax: ev.at(-1) * unit,
     U: unflatten(matvec(M, flatten(force()))),
   };
+  lastU = { X: sed.X, model: sed.model, U: cur.U };
   return cur;
 }
 

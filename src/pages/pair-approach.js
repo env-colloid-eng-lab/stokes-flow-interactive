@@ -4,6 +4,8 @@ import { createPlot } from "../ui/plot.js";
 import { joPolynomials, joXA } from "../physics/jo.js";
 import { axialCollocation } from "../physics/collocation.js";
 import { resistanceCoefficients, pairMatrix } from "../models/pairA.js";
+import { coefficientsBAtGap } from "../models/pairB.js";
+import { joScalarAtGap } from "../physics/joFull.js";
 import { approachTrajectory } from "../models/approach.js";
 
 initPage("p9");
@@ -19,10 +21,16 @@ const MODELS = {
   rpy: { name: "RPY の逆行列", color: "var(--c1)" },
   lub: { name: "RPY ＋ 教材潤滑", color: "var(--c2)" },
   jo: { name: "JO 級数（軸方向）", color: "var(--c3)" },
+  B: { name: "案B（JO 全関数、特異項込み）", color: "var(--c4)" },
 };
 
 function coeffs(model, h) {
   const r = 2 * a + h;
+  if (model === "B") {
+    const cb = coefficientsBAtGap(h, { a, mu });
+    return { R: cb.R, M: cb.M, jo: null, zeta: 0,
+      source: { par: "案B：JO の X^A（近接の特異項を閉じた形で足した全関数、13.）", perp: "案B：JO の全関数から回転を消去した値（球は自由に回る、13.）" } };
+  }
   const opts = { a, mu };
   if (model === "lub") Object.assign(opts, { lubrication: true, hc: state.hc * a });
   if (model === "jo") Object.assign(opts, { axial: "jo", polys: polys60.slice(0, state.K + 1) });
@@ -30,6 +38,8 @@ function coeffs(model, h) {
 }
 // X11 - X12 (normalised) and whether the value can be trusted
 function relative(model, h) {
+  // model B along the line of centres: only X^A is needed (axial motion does not couple to rotation)
+  if (model === "B") return { value: joScalarAtGap("XA11", h / a) - joScalarAtGap("XA12", h / a), ok: true };
   const c = coeffs(model, h);
   return { value: (c.R.par.self - c.R.par.cross) / unit, ok: model !== "jo" || c.jo.converged, c };
 }
@@ -89,6 +99,7 @@ function renderResistance() {
   const jo = curve("jo");
   series.push({ name: `JO 級数 K = ${state.K}（収束範囲）`, color: MODELS.jo.color, width: 2.5, points: jo.map((p) => [p.hh, p.ok ? p.value : NaN]) });
   series.push({ name: "同（未収束）", color: MODELS.jo.color, width: 1, dash: "3 3", points: jo.map((p) => [p.hh, p.ok ? NaN : p.value]) });
+  series.push({ name: MODELS.B.name, color: MODELS.B.color, width: 2.5, points: curve("B").map((p) => [p.hh, p.value]) });
   series.push({ name: "潤滑の主要項 a/(2h)", color: "var(--muted)", dash: "6 4", width: 1.5, points: hgrid.map((hh) => [hh, a / (2 * hh)]) });
   series.push({ name: `境界条件解法（L = ${state.colloc[0]?.L ?? state.L}）`, color: "var(--ink)", marker: true, r: 4, points: state.colloc.map((c) => [c.h, c.value]) });
   resPlot.update({ series, ydomain: [0.5, 2e3], xdomain: [1e-3, 10], vlines: [{ x: state.hc, color: MODELS.lub.color }] });
@@ -156,7 +167,7 @@ function renderGap() {
   const notes = [];
   if (traj.rpy.stop === "contact") notes.push(`RPY だけでは t ≈ ${traj.rpy.ts.at(-1).toFixed(1)} で接触する（接近速度が h → 0 でも有限）。`);
   if (traj.jo.stop === "series") notes.push(`JO 級数（K = ${state.K}）は h ≈ ${traj.jo.hs.at(-1).toPrecision(2)}a で収束しなくなるので、そこで止めた。`);
-  notes.push("教材潤滑を加えると、h_c より近くで隙間は指数的に減り、有限時間では接触しない。");
+  notes.push("教材潤滑を加えると、h_c より近くで隙間は指数的に減り、有限時間では接触しない。案B（厳密）でも同じで、接触の近くでは主要項 a/(2h) が効く。");
   document.getElementById("gap-caption").textContent = notes.join(" ");
 }
 // reference line: starting where the lubricated trajectory crosses h_c
@@ -191,7 +202,7 @@ function explainEntry(i, j, v) {
     if (m === "jo") wrap.append(h("div", { class: "caption" }, c.jo.converged ? `K = ${c.jo.K} 次で収束（${c.jo.Kc} 次との相対差 ${fmt(c.jo.change, 2)}）。` : "級数が収束していない。この値は使えない。"));
   } else {
     wrap.append(tex(same ? "Y_{11}" : "Y_{12}", { display: true }),
-      h("div", { class: "caption" }, `出典：${c.source.perp}。案Aでは垂直方向の厳密な関数がないので、どのモデルでも RPY の値を使っている。`));
+      h("div", { class: "caption" }, m === "B" ? `出典：${c.source.perp}。` : `出典：${c.source.perp}。案Aでは垂直方向の厳密な関数がないので、RPY の値を使っている。`));
   }
   return wrap;
 }

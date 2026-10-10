@@ -5,6 +5,7 @@ import { createScene } from "../ui/scene2d.js";
 import { matvec } from "../core/linalg.js";
 import { joPolynomials, joXA } from "../physics/jo.js";
 import { mobilityCoefficients, resistanceCoefficients, pairMatrix, pairFrame, toPairFrame } from "../models/pairA.js";
+import { coefficientsB } from "../models/pairB.js";
 
 initPage("p8");
 
@@ -22,11 +23,17 @@ const PAIR = ["1∥", "1⊥", "1⊥′", "2∥", "2⊥", "2⊥′"];
 const DIRS = ["∥", "⊥", "⊥′"];
 
 // ---------- model ----------
+// model A (RPY / Oseen) or model B (Jeffrey-Onishi, torque free): { M, R } coefficient pairs
+const KIND_TAG = { rpy: "RPY", oseen: "Oseen", B: "案B" };
+function pairCoefficients(r) {
+  if (state.kind === "B") return coefficientsB(r, { a, mu });
+  return { M: mobilityCoefficients(r, { a, mu, kind: state.kind }), R: resistanceCoefficients(r, { a, mu, kind: state.kind }).R };
+}
 function current() {
   const theta = (state.thetaDeg * Math.PI) / 180;
   const frame = pairFrame(theta);
-  const mc = mobilityCoefficients(state.r, { a, mu, kind: state.kind });
-  const rc = resistanceCoefficients(state.r, { a, mu, kind: state.kind });
+  const pc = pairCoefficients(state.r);
+  const mc = pc.M, rc = { R: pc.R };
   const coeffs = state.show === "M"
     ? { par: { self: mc.par.self * unit, cross: mc.par.cross * unit }, perp: { self: mc.perp.self * unit, cross: mc.perp.cross * unit } }
     : { par: { self: rc.R.par.self / unit, cross: rc.R.par.cross / unit }, perp: { self: rc.R.perp.self / unit, cross: rc.R.perp.cross / unit } };
@@ -53,7 +60,7 @@ const forcingSeg = segmented([["sediment", "同じ向き（沈降）"], ["approa
 const rSlider = slider({ label: "中心間距離 r/a", min: 2.02, max: 12, step: 0.01, value: state.r, format: (v) => v.toFixed(2), onInput: (v) => { state.r = v; render(); } });
 const thSlider = slider({ label: "対の向き θ", min: 0, max: 180, step: 1, value: state.thetaDeg, format: (v) => `${v}°`, onInput: (v) => { state.thetaDeg = v; render(); } });
 controls.append(rSlider, thSlider,
-  field("近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"]], state.kind, (v) => { state.kind = v; render(); })),
+  field("近似", segmented([["rpy", "RPY"], ["oseen", "Oseen"], ["B", "案B（厳密、自由回転）"]], state.kind, (v) => { state.kind = v; render(); })),
   field("力", forcingSeg));
 
 const mctl = document.getElementById("matrix-controls");
@@ -181,7 +188,11 @@ function explainEntry(i, j, v) {
 }
 
 function sourceText(key) {
-  const approx = state.kind === "rpy" ? "RPY" : "Oseen";
+  if (state.kind === "B")
+    return state.show === "M"
+      ? (key === "self" ? "案B：厳密な抵抗の逆行列なので、自己移動度も相手の影響で 1/(6πμa) から（r⁻⁴ の次数で）ずれる。" : "案B：厳密な抵抗の 2×2 逆行列の非対角。")
+      : `案B：Jeffrey–Onishi の厳密な抵抗関数から、回転の自由度を消去した値（球は自由に回る、13.）。${key === "self" ? "接近すると中心線方向は 1/h で発散する。" : ""}`;
+  const approx = KIND_TAG[state.kind];
   if (state.show === "M")
     return key === "self" ? "自己ブロック：孤立球の移動度 1/(6πμa)（6. 球の抵抗）。" : `相互ブロック：${approx} 近似の c∥(r), c⊥(r)。`;
   return key === "self"
@@ -233,7 +244,8 @@ function render(c = current()) {
 
   // distance dependence
   const fam = distanceFamily();
-  const tag = state.kind === "rpy" ? "RPY" : "Oseen";
+  const tag = KIND_TAG[state.kind];
+  const rTag = state.kind === "B" ? tag : `${tag}⁻¹`; // model A resistances are inverses of mobilities
   if (state.show === "M") {
     distPlot.update({
       series: [
@@ -247,17 +259,18 @@ function render(c = current()) {
     const nearOk = (p) => p.r > 2.3; // JO series (K = 40) is shown only where it has converged well
     distPlot.update({
       series: [
-        { name: `X₁₁（${tag}⁻¹）`, color: "var(--c2)", points: fam.map((p) => [p.r, p.X11]) },
-        { name: `X₁₂（${tag}⁻¹）`, color: "var(--c2)", dash: "6 4", points: fam.map((p) => [p.r, p.X12]) },
-        { name: `Y₁₁（${tag}⁻¹）`, color: "var(--c3)", points: fam.map((p) => [p.r, p.Y11]) },
-        { name: `Y₁₂（${tag}⁻¹）`, color: "var(--c3)", dash: "6 4", points: fam.map((p) => [p.r, p.Y12]) },
+        { name: `X₁₁（${rTag}）`, color: "var(--c2)", points: fam.map((p) => [p.r, p.X11]) },
+        { name: `X₁₂（${rTag}）`, color: "var(--c2)", dash: "6 4", points: fam.map((p) => [p.r, p.X12]) },
+        { name: `Y₁₁（${rTag}）`, color: "var(--c3)", points: fam.map((p) => [p.r, p.Y11]) },
+        { name: `Y₁₂（${rTag}）`, color: "var(--c3)", dash: "6 4", points: fam.map((p) => [p.r, p.Y12]) },
         { name: "X^A₁₁, X^A₁₂（JO 級数）", color: "var(--ink)", width: 1.2, dash: "1 3", points: fam.map((p) => [p.r, nearOk(p) ? p.J11 : NaN]) },
         { color: "var(--ink)", width: 1.2, dash: "1 3", points: fam.map((p) => [p.r, nearOk(p) ? p.J12 : NaN]) },
       ],
       vlines: [{ x: state.r }],
     });
-    document.getElementById("distance-caption").textContent =
-      "点線は二球の厳密な軸方向抵抗（JO 級数、r/a > 2.3 で表示）。遠方では RPY の逆行列と重なり、近づくほど離れる。差の大きさは 9. で調べる。";
+    document.getElementById("distance-caption").textContent = state.kind === "B"
+      ? "案B では、中心線方向の X は接触で 1/h、垂直方向の Y は ln(1/h) で増える（球は自由に回る）。点線は遠方の JO 級数（r/a > 2.3）。"
+      : "点線は二球の厳密な軸方向抵抗（JO 級数、r/a > 2.3 で表示）。遠方では RPY の逆行列と重なり、近づくほど離れる。差の大きさは 9. と 13. で調べる。";
   }
 
   renderEigen(c);
@@ -270,11 +283,12 @@ function distanceFamily() {
   if (famCache.has(key)) return famCache.get(key);
   const rs = Array.from({ length: 200 }, (_, i) => 2.02 + (i * (12 - 2.02)) / 199);
   const fam = rs.map((r) => {
+    const pc = pairCoefficients(r);
     if (state.show === "M") {
-      const m = mobilityCoefficients(r, { a, mu, kind: state.kind });
+      const m = pc.M;
       return { r, a1: m.par.cross * unit, a2: m.perp.cross * unit };
     }
-    const rr = resistanceCoefficients(r, { a, mu, kind: state.kind }).R;
+    const rr = pc.R;
     const jo = joXA(r / a, 1, polys);
     return { r, X11: rr.par.self / unit, X12: rr.par.cross / unit, Y11: rr.perp.self / unit, Y12: rr.perp.cross / unit, J11: jo.x11, J12: jo.x12 };
   });
