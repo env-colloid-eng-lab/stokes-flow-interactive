@@ -7,7 +7,7 @@ import { mulberry32 } from "../core/random.js";
 import { mobility, mobilityVelocity, flatten, unflatten } from "../physics/rpy.js";
 import { heunStep } from "../physics/integrate.js";
 import { resistance, pairwiseSumResistance, axialManyBody, invertMobility, axialComponents } from "../models/manyBody.js";
-import { sdTranslationalFT, pairwiseSumB } from "../models/sdFT.js";
+import { sdTranslationalFT, sdBundle } from "../models/sdFT.js";
 
 initPage("p10");
 
@@ -158,7 +158,10 @@ function minGap(X) {
 
 // velocities for the selected model; SD (model B) solves the force-torque resistance problem
 // with torque-free spheres instead of applying a mobility
+// The velocities of the configuration last shown by compute() are reused by the next step's first stage.
+let lastU = null;
 function velocities(X) {
+  if (lastU && lastU.X === X && lastU.model === sed.model) return lastU.U;
   if (sed.model === "sd") return unflatten(solve(sdTranslationalFT(X, { a, mu }), flatten(force())));
   return mobilityVelocity(X, force(), { a, mu, model: sed.model });
 }
@@ -193,9 +196,8 @@ let cur = null;
 function compute() {
   let M, R, R2B;
   if (sed.model === "sd") {
-    R = sdTranslationalFT(sed.X, { a, mu });
+    ({ R, R2B } = sdBundle(sed.X, { a, mu })); // each exact pair built once
     M = invertMobility(R);
-    R2B = pairwiseSumB(sed.X, { a, mu });
   } else {
     M = mobility(sed.X, { a, mu, model: sed.model }); // built once, reused for R, eigenvalues and U
     R = invertMobility(M);
@@ -207,6 +209,7 @@ function compute() {
     R: scale(R), R2B: scale(R2B), diff: scale(sub(R, R2B)), evMin: ev[0] * unit, evMax: ev.at(-1) * unit,
     U: unflatten(matvec(M, flatten(force()))),
   };
+  lastU = { X: sed.X, model: sed.model, U: cur.U };
   return cur;
 }
 

@@ -7,7 +7,7 @@
 // Layout of the 6N system: per sphere [U_p (3), Omega_p (3)].
 import { zeros, eye, inv, getBlock, setBlock, solve, sub, matmul } from "../core/linalg.js";
 import { joScalarsAtGap } from "../physics/joFull.js";
-import { resistance12, rpyMobility12, torqueFree } from "./pairB.js";
+import { resistance12, rpyMobility12 } from "./pairB.js";
 import { pairwiseSum } from "./manyBody.js";
 import { sdResistance } from "./sd.js";
 
@@ -72,11 +72,25 @@ export function torqueFreeN(R6) {
 /** Translational resistance (3N x 3N) of freely rotating spheres, SD with forces and torques. */
 export const sdTranslationalFT = (X, opts) => torqueFreeN(sdResistanceFT(X, opts));
 
-/** Pairwise sum of torque-free two-sphere resistances (model B), 3N x 3N, for comparison with R. */
-export function pairwiseSumB(X, { a = 1, mu = 1 } = {}) {
+/**
+ * Everything page 10 needs for one configuration, with each exact pair built once:
+ * R (3N, torque free, SD with forces and torques) and R2B (pairwise sum of torque-free exact pairs).
+ */
+export function sdBundle(X, { a = 1, mu = 1 } = {}) {
+  const N = X.length, opts = { a, mu };
+  const exactPairs = new Map();
+  const exactPair = (p, q) => {
+    const k = p * N + q;
+    if (!exactPairs.has(k)) exactPairs.set(k, pairExactFT(X, p, q, opts));
+    return exactPairs.get(k);
+  };
+  const self6 = () => selfFT(opts);
+  const R6 = sdResistance(inv(rpyMobilityFT(X, opts)),
+    pairwiseSum(N, 6, exactPair, self6), pairwiseSum(N, 6, (p, q) => pairFarFT(X, p, q, opts), self6));
   const iso = eye(3).map((row) => row.map((d) => d * 6 * Math.PI * mu * a));
-  return pairwiseSum(X.length, 3, (p, q) => {
-    const rv = pairVector(X, p, q), r = Math.hypot(...rv);
-    return torqueFree(resistance12(joScalarsAtGap((r - 2 * a) / a), rv.map((x) => x / r), { a, mu }));
-  }, () => iso);
+  const R2B = pairwiseSum(N, 3, (p, q) => torqueFreeN(exactPair(p, q)), () => iso);
+  return { R: torqueFreeN(R6), R2B };
 }
+
+/** Pairwise sum of torque-free exact two-sphere resistances (model B), 3N x 3N. */
+export const pairwiseSumB = (X, opts) => sdBundle(X, opts).R2B;

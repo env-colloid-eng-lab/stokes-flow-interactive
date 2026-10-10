@@ -87,10 +87,13 @@ export function torqueFree(R) {
  * Model B in the form used by pages 8 and 9: torque-free pair coefficients along (par) and across
  * (perp) the line of centres, self and cross, for the resistance R and its inverse M (dimensional).
  */
-export function coefficientsB(r, { a = 1, mu = 1 } = {}) {
-  if (!(r > 2 * a)) throw new RangeError("the spheres must not touch (r > 2a)");
-  const T = torqueFree(resistance12(joScalarsAtGap((r - 2 * a) / a), [0, 0, 1], { a, mu }));
+export function coefficientsBAtGap(h, { a = 1, mu = 1 } = {}) {
+  if (!(h > 0)) throw new RangeError("the spheres must not touch (gap > 0)");
+  const T = torqueFree(resistance12(joScalarsAtGap(h / a), [0, 0, 1], { a, mu }));
   const R = { par: { self: T[2][2], cross: T[2][5] }, perp: { self: T[0][0], cross: T[0][3] } };
-  const invert2 = ({ self, cross }) => { const d = self * self - cross * cross; return { self: self / d, cross: -cross / d }; };
+  // self ~ -cross near contact: factor the determinant instead of forming self^2 - cross^2
+  const invert2 = ({ self, cross }) => { const d = (self - cross) * (self + cross); return { self: self / d, cross: -cross / d }; };
   return { R, M: { par: invert2(R.par), perp: invert2(R.perp) } };
 }
+// The same at the centre distance r (pass the gap when it is tiny, to keep its digits).
+export const coefficientsB = (r, opts = {}) => coefficientsBAtGap(r - 2 * (opts.a ?? 1), opts);

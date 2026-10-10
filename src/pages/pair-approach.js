@@ -4,7 +4,8 @@ import { createPlot } from "../ui/plot.js";
 import { joPolynomials, joXA } from "../physics/jo.js";
 import { axialCollocation } from "../physics/collocation.js";
 import { resistanceCoefficients, pairMatrix } from "../models/pairA.js";
-import { coefficientsB } from "../models/pairB.js";
+import { coefficientsBAtGap } from "../models/pairB.js";
+import { joScalarAtGap } from "../physics/joFull.js";
 import { approachTrajectory } from "../models/approach.js";
 
 initPage("p9");
@@ -26,7 +27,7 @@ const MODELS = {
 function coeffs(model, h) {
   const r = 2 * a + h;
   if (model === "B") {
-    const cb = coefficientsB(r, { a, mu });
+    const cb = coefficientsBAtGap(h, { a, mu });
     return { R: cb.R, M: cb.M, jo: null, zeta: 0,
       source: { par: "案B：JO の X^A（近接の特異項を閉じた形で足した全関数、13.）", perp: "案B：JO の全関数から回転を消去した値（球は自由に回る、13.）" } };
   }
@@ -37,6 +38,8 @@ function coeffs(model, h) {
 }
 // X11 - X12 (normalised) and whether the value can be trusted
 function relative(model, h) {
+  // model B along the line of centres: only X^A is needed (axial motion does not couple to rotation)
+  if (model === "B") return { value: joScalarAtGap("XA11", h / a) - joScalarAtGap("XA12", h / a), ok: true };
   const c = coeffs(model, h);
   return { value: (c.R.par.self - c.R.par.cross) / unit, ok: model !== "jo" || c.jo.converged, c };
 }

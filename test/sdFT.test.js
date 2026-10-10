@@ -2,8 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { eigvalsSym, asymmetry, inv } from "../src/core/linalg.js";
-import { sdResistanceFT, sdTranslationalFT, torqueFreeN, rpyMobilityFT, pairwiseSumB } from "../src/models/sdFT.js";
-import { resistance12, torqueFree, coefficientsB } from "../src/models/pairB.js";
+import { sdResistanceFT, sdTranslationalFT, torqueFreeN, rpyMobilityFT, pairwiseSumB, sdBundle } from "../src/models/sdFT.js";
+import { resistance12, torqueFree, coefficientsB, coefficientsBAtGap, pairScalarsAtGap } from "../src/models/pairB.js";
 import { joScalarsAtGap } from "../src/physics/joFull.js";
 import { mobility } from "../src/physics/rpy.js";
 import { sdResistance } from "../src/models/sd.js";
@@ -16,6 +16,9 @@ test("two spheres: the SD construction reproduces model B exactly", () => {
   const exact = torqueFree(resistance12(joScalarsAtGap(r - 2), e));
   const sd = sdTranslationalFT([[0, 0, 0], rv]);
   sd.forEach((row, i) => row.forEach((v, j) => close(v, exact[i][j], { rtol: 1e-9, atol: 1e-9 })));
+  // for two spheres the pairwise sum of exact pairs is the same matrix
+  const two = pairwiseSumB([[0, 0, 0], rv]);
+  two.forEach((row, i) => row.forEach((v, j) => close(v, exact[i][j], { rtol: 1e-9, atol: 1e-9 })));
 });
 
 test("the RPY mobility with rotation, inverted and reduced, gives the translational RPY inverse", () => {
@@ -42,7 +45,9 @@ test("SD with forces and torques is symmetric and positive definite, also near c
   assert.ok(asymmetry(R6) < 1e-9 * Math.max(...R6.flat().map(Math.abs)));
   assert.ok(Math.min(...eigvalsSym(R6)) > 0);
   assert.ok(Math.min(...eigvalsSym(R3)) > 0);
-  assert.equal(pairwiseSumB(X).length, 12);
+  const b = sdBundle(X);
+  b.R.forEach((row, i) => row.forEach((v, j) => close(v, R3[i][j], { rtol: 1e-12, atol: 1e-12 })));
+  assert.equal(b.R2B.length, 12);
 });
 
 test("model B coefficients for pages 8-9: M is the inverse of R, the axial part is X^A", () => {
@@ -57,7 +62,14 @@ test("model B coefficients for pages 8-9: M is the inverse of R, the axial part 
       close(self * m.cross + cross * m.self, 0, { atol: 1e-12 });
     }
     // torque-free transverse resistance lies between model A's and the rotation-fixed Y^A
+    const tfA = torqueFree(resistance12(pairScalarsAtGap(r - 2, "A"), [0, 0, 1]))[0][0];
     assert.ok(c.R.perp.self / (6 * Math.PI) < s.YA11 + 1e-12);
+    assert.ok(c.R.perp.self > tfA * (1 - 1e-12));
   }
   assert.throws(() => coefficientsB(2), RangeError);
+  // near contact the gap is passed directly and the 2x2 inverse is factored
+  const h = 1e-8, cg = coefficientsBAtGap(h), par = cg.R.par;
+  close((par.self - par.cross) / (6 * Math.PI), joScalarsAtGap(h).XA11 - joScalarsAtGap(h).XA12, { rtol: 1e-12 });
+  // mobility from the two eigenmodes, m_self = (1/(self - cross) + 1/(self + cross)) / 2, to full precision
+  close(cg.M.par.self, (1 / (par.self - par.cross) + 1 / (par.self + par.cross)) / 2, { rtol: 1e-12 });
 });
