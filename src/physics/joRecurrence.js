@@ -150,9 +150,11 @@ export function joAllPolynomials(K, opts) {
   return Object.fromEntries(FAMILIES.map((f) => [f, joFamilyPolynomials(f, K, opts)]));
 }
 
+// Float64 value of a polynomial given by coefficients in increasing powers (Horner).
+export const hornerAt = (coeffs, x) => coeffs.reduceRight((acc, c) => acc * x + c, 0);
+
 // f_k at a given lambda (Float64), k = 0..K.
 export function joAllValues(K, lambda = 1) {
   const P = joAllPolynomials(K);
-  const ev = (c) => c.reduceRight((acc, x) => acc * lambda + x, 0);
-  return Object.fromEntries(Object.entries(P).map(([name, rows]) => [name, rows.map(ev)]));
+  return Object.fromEntries(Object.entries(P).map(([name, rows]) => [name, rows.map((c) => hornerAt(c, lambda))]));
 }

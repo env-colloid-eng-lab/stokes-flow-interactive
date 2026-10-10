@@ -1,63 +1,82 @@
 import { initPage, h, field, segmented, slider, fmt, frameThrottle } from "../ui/page.js";
 import { createPlot } from "../ui/plot.js";
 import { createMatrixView } from "../ui/matrixView.js";
-import { joScalarAtGap, nearContact } from "../physics/joFull.js";
-import { pairScalarsAtGap, resistance12, torqueFree, NAMES } from "../models/pairB.js";
+import { joPairScalarsAtGap, nearContactPair } from "../physics/joFull.js";
+import { pairScalarsUnequal, resistance12, torqueFree, NAMES16 } from "../models/pairB.js";
 
 initPage("p13");
 
+// sphere 1 has radius 1; sphere 2 has radius lambda (the size ratio a2/a1)
+const RATIOS = [[1, "1 : 1"], [0.5, "1 : 1/2"], [0.25, "1 : 1/4"]];
 const FAMILIES = {
-  XA: { label: "X^A（中心線方向の並進）", names: ["XA11", "XA12"], ydomain: [-30, 30] },
-  YA: { label: "Y^A（垂直方向の並進）", names: ["YA11", "YA12"] },
-  YB: { label: "Y^B（並進と回転の結合）", names: ["YB11", "YB12"] },
-  XC: { label: "X^C（中心線まわりの回転）", names: ["XC11", "XC12"] },
-  YC: { label: "Y^C（垂直な軸まわりの回転）", names: ["YC11", "YC12"] },
+  XA: { label: "X^A（中心線方向の並進）", names: ["XA11", "XA12", "XA22"], ydomain: [-30, 30] },
+  YA: { label: "Y^A（垂直方向の並進）", names: ["YA11", "YA12", "YA22"] },
+  YB: { label: "Y^B（並進と回転の結合）", names: ["YB11", "YB12", "YB21", "YB22"] },
+  XC: { label: "X^C（中心線まわりの回転）", names: ["XC11", "XC12", "XC22"] },
+  YC: { label: "Y^C（垂直な軸まわりの回転）", names: ["YC11", "YC12", "YC22"] },
 };
-const st = { fam: "XA", eval: "full", gap: 0.05, theta: 30, show: "B" };
+const COLOR = { 11: "var(--c1)", 12: "var(--c2)", 21: "var(--c4)", 22: "var(--c3)" };
+const st = { lambda: 1, fam: "XA", eval: "full", gap: 0.05, theta: 30, show: "B" };
 const gaps = Array.from({ length: 121 }, (_, k) => 10 ** (-3 + (4 * k) / 120));
+const radii = () => ({ a1: 1, a2: st.lambda });
+const shown = (names) => (st.lambda === 1 ? names.filter((n) => !n.endsWith("22") && !n.endsWith("21")) : names);
 
-// cache both models on the plotting grid (they do not depend on the controls)
-const gridA = gaps.map((g) => pairScalarsAtGap(g, "A")), gridB = gaps.map((g) => pairScalarsAtGap(g, "B"));
-const gridPlain = Object.fromEntries(NAMES.map((n) => [n, gaps.map((g) => joScalarAtGap(n, g, { plain: true }))]));
+// model-B plain series (no singular part) and leading near-contact terms, all 16 scalars
+const plainAt = (xi) => joPairScalarsAtGap(xi, { lambda: st.lambda, plain: true });
+const leadAt = (xi) => nearContactPair(xi, st.lambda);
 
-// scalars at the gap chosen with the slider, computed once per gap
+// cached curves for the current ratio
+let grid = null;
+function curves() {
+  if (grid && grid.lambda === st.lambda) return grid;
+  const A = gaps.map((g) => pairScalarsUnequal(g, "A", radii())), B = gaps.map((g) => pairScalarsUnequal(g, "B", radii()));
+  grid = { lambda: st.lambda, A, B, plain: {} };
+  return grid;
+}
+const plainCurve = (n) => (grid.plain.all ??= gaps.map((g) => plainAt(g))).map((p) => p[n]);
+
+// scalars at the gap chosen with the slider, computed once per gap and ratio
 let atGap = null;
 function scalarsAtGap() {
-  if (!atGap || atGap.gap !== st.gap) atGap = { gap: st.gap, A: pairScalarsAtGap(st.gap, "A"), B: pairScalarsAtGap(st.gap, "B"), plain: null };
-  if (st.eval === "plain" && !atGap.plain) atGap.plain = Object.fromEntries(NAMES.map((n) => [n, joScalarAtGap(n, st.gap, { plain: true })]));
+  if (!atGap || atGap.gap !== st.gap || atGap.lambda !== st.lambda)
+    atGap = { gap: st.gap, lambda: st.lambda, A: pairScalarsUnequal(st.gap, "A", radii()), B: pairScalarsUnequal(st.gap, "B", radii()), plain: null };
+  if (st.eval === "plain" && !atGap.plain) atGap.plain = plainAt(st.gap);
   return atGap;
 }
 
 // ---------------------------------------------------------------------
 // functions of the gap
 // ---------------------------------------------------------------------
-const famPlot = createPlot(document.getElementById("fam-plot"), { width: 960, height: 320, xlog: true, xlabel: "すき間 h/a", ylabel: "無次元の抵抗関数" });
+const famPlot = createPlot(document.getElementById("fam-plot"), { width: 960, height: 320, xlog: true, xlabel: "すき間 ξ = 2h/(a₁+a₂)", ylabel: "無次元の抵抗関数" });
 const scheduleFam = frameThrottle(() => { renderFam(); renderTable(); });
+document.getElementById("ratio-controls").append(
+  field("半径の比 a₁ : a₂", segmented(RATIOS, st.lambda, (v) => { st.lambda = v; renderAll(); })));
 document.getElementById("fam-controls").append(
   field("関数", segmented(Object.entries(FAMILIES).map(([k, f]) => [k, f.label]), st.fam, (v) => { st.fam = v; renderFam(); })),
   field("案B の計算", segmented([["full", "特異項を分けて足す"], ["plain", "級数だけ（200 項）"]], st.eval, (v) => { st.eval = v; renderFam(); renderTable(); })));
 function renderFam() {
-  const f = FAMILIES[st.fam];
+  const c = curves(), f = FAMILIES[st.fam];
   const series = [];
-  f.names.forEach((n, i) => {
-    const color = i === 0 ? "var(--c1)" : "var(--c2)", tag = n.slice(2);
-    series.push({ name: `案B ${tag}`, color, width: 3, points: gaps.map((g, k) => [g, st.eval === "plain" ? gridPlain[n][k] : gridB[k][n]]) });
-    series.push({ name: `案A ${tag}`, color, dash: "6 4", points: gaps.map((g, k) => [g, gridA[k][n]]) });
-    if (nearContact[n]) series.push({ name: `近接の主要項 ${tag}`, color: "var(--muted)", dash: "2 3", points: gaps.filter((g) => g < 0.3).map((g) => [g, nearContact[n](g)]) });
+  shown(f.names).forEach((n) => {
+    const tag = n.slice(2), color = COLOR[tag];
+    series.push({ name: `案B ${tag}`, color, width: 3, points: gaps.map((g, k) => [g, st.eval === "plain" ? plainCurve(n)[k] : c.B[k][n]]) });
+    series.push({ name: `案A ${tag}`, color, dash: "6 4", points: gaps.map((g, k) => [g, c.A[k][n]]) });
+    if (st.fam !== "XC") series.push({ color: "var(--muted)", dash: "2 3", points: gaps.filter((g) => g < 0.3).map((g) => [g, leadAt(g)[n]]) });
   });
+  if (st.fam !== "XC") series.push({ name: "近接の主要項", color: "var(--muted)", dash: "2 3", points: [] });
   famPlot.update({ series, hlines: [{ y: 0 }], vlines: [{ x: st.gap }], ydomain: f.ydomain });
 }
 
-const gapSlider = slider({ label: "すき間 h/a", min: -3, max: 1, step: 0.01, value: Math.log10(st.gap), format: (v) => fmt(10 ** v, 3), onInput: (v) => { st.gap = 10 ** v; scheduleFam(); scheduleMat(); } });
+const gapSlider = slider({ label: "すき間 ξ", min: -3, max: 1, step: 0.01, value: Math.log10(st.gap), format: (v) => fmt(10 ** v, 3), onInput: (v) => { st.gap = 10 ** v; scheduleFam(); scheduleMat(); } });
 document.getElementById("gap-controls").append(gapSlider);
 function renderTable() {
   const { A, B, plain } = scalarsAtGap();
-  const rows = NAMES.map((n) => {
+  const rows = shown(NAMES16).map((n) => {
     const bv = st.eval === "plain" ? plain[n] : B[n];
     return h("tr", {}, h("td", {}, n), h("td", {}, fmt(A[n], 4)), h("td", {}, fmt(bv, 4)), h("td", {}, Math.abs(A[n]) > 1e-12 ? fmt(bv / A[n], 3) : "—"));
   });
   document.getElementById("fam-table").replaceChildren(h("table", { class: "data" },
-    h("tr", {}, h("th", {}, `h/a = ${fmt(st.gap, 3)}`), h("th", {}, "案A"), h("th", {}, st.eval === "plain" ? "案B（級数だけ）" : "案B"), h("th", {}, "B ÷ A")), ...rows));
+    h("tr", {}, h("th", {}, `ξ = ${fmt(st.gap, 3)}`), h("th", {}, "案A"), h("th", {}, st.eval === "plain" ? "案B（級数だけ）" : "案B"), h("th", {}, "B ÷ A")), ...rows));
 }
 
 // ---------------------------------------------------------------------
@@ -76,15 +95,21 @@ document.getElementById("mat-controls").append(
   slider({ label: "対の向き θ（z 軸から）", min: 0, max: 90, step: 1, value: st.theta, format: (v) => `${v}°`, onInput: (v) => { st.theta = v; scheduleMat(); } }),
   field("表示", segmented([["A", "案A"], ["B", "案B"], ["D", "差 B − A"]], st.show, (v) => { st.show = v; renderMat(); })));
 
-// each 3 x 3 block divided by its own unit, so that the entries are the JO scalars times direction factors
+// each 3 x 3 block divided by its JO unit (3 pi mu (a_a + a_b), pi mu (a_a + a_b)^2, pi mu (a_a + a_b)^3),
+// so that the entries are the scalars times direction factors
 function normalised(R) {
-  const u = [6 * Math.PI, 4 * Math.PI, 4 * Math.PI, 8 * Math.PI]; // A, B~, B, C blocks (a = mu = 1)
-  return R.map((row, i) => row.map((v, j) => v / (i < 6 && j < 6 ? u[0] : i >= 6 && j >= 6 ? u[3] : u[1])));
+  const rad = [1, st.lambda];
+  const sphere = (k) => Math.floor(k / 3) % 2;           // 0 or 1
+  const power = (i, j) => (i < 6 && j < 6 ? 1 : i >= 6 && j >= 6 ? 3 : 2);
+  return R.map((row, i) => row.map((v, j) => {
+    const s = rad[sphere(i)] + rad[sphere(j)], p = power(i, j);
+    return v / ((p === 1 ? 3 : 1) * Math.PI * s ** p);
+  }));
 }
 function renderMat() {
   const th = (st.theta * Math.PI) / 180, e = [Math.sin(th), 0, Math.cos(th)];
   const { A, B } = scalarsAtGap();
-  const RA = normalised(resistance12(A, e)), RB = normalised(resistance12(B, e));
+  const RA = normalised(resistance12(A, e, radii())), RB = normalised(resistance12(B, e, radii()));
   const RD = RB.map((row, i) => row.map((v, j) => v - RA[i][j]));
   lastMats = { RA, RB, RD, e };
   const M = st.show === "A" ? RA : st.show === "B" ? RB : RD;
@@ -100,15 +125,16 @@ function explainEntry(i, j, v) {
 }
 
 // ---------------------------------------------------------------------
-// where the models part: |B - A| versus r
+// where the models part: |B - A| versus s
 // ---------------------------------------------------------------------
-const farPlot = createPlot(document.getElementById("far-plot"), { width: 960, height: 320, xlog: true, ylog: true, xlabel: "中心間距離 r/a", ylabel: "|案B − 案A|" });
-{
-  const rs = Array.from({ length: 41 }, (_, k) => 10 ** (Math.log10(2.2) + ((Math.log10(40) - Math.log10(2.2)) * k) / 40));
+const farPlot = createPlot(document.getElementById("far-plot"), { width: 960, height: 320, xlog: true, ylog: true, xlabel: "中心間距離 s = 2r/(a₁+a₂)", ylabel: "|案B − 案A|" });
+function renderFar() {
+  const ss = Array.from({ length: 41 }, (_, k) => 10 ** (Math.log10(2.2) + ((Math.log10(40) - Math.log10(2.2)) * k) / 40));
   const pick = [["XA11", "var(--c1)", "r⁻⁴"], ["XA12", "var(--c1)", "r⁻⁵"], ["YA11", "var(--c2)", "r⁻⁶"], ["YC11", "var(--c3)", "r⁻⁶"], ["YB11", "var(--ink)", "r⁻⁷"]];
-  const sA = rs.map((r) => pairScalarsAtGap(r - 2, "A")), sB = rs.map((r) => pairScalarsAtGap(r - 2, "B"));
+  if (st.lambda !== 1) pick.push(["XA22", "var(--c4)", "r⁻⁴"]);
+  const sA = ss.map((s) => pairScalarsUnequal(s - 2, "A", radii())), sB = ss.map((s) => pairScalarsUnequal(s - 2, "B", radii()));
   farPlot.update({
-    series: pick.map(([n, color, slope], i) => ({ name: `${n}（${slope}）`, color, dash: i === 1 ? "6 4" : null, points: rs.map((r, k) => [r, Math.abs(sB[k][n] - sA[k][n])]) })),
+    series: pick.map(([n, color, slope], i) => ({ name: `${n}（${slope}）`, color, dash: i === 1 ? "6 4" : null, points: ss.map((s, k) => [s, Math.abs(sB[k][n] - sA[k][n])]) })),
     ydomain: [1e-12, 1e2],
   });
 }
@@ -116,21 +142,23 @@ const farPlot = createPlot(document.getElementById("far-plot"), { width: 960, he
 // ---------------------------------------------------------------------
 // rotation fixed or torque free
 // ---------------------------------------------------------------------
-const tfPlot = createPlot(document.getElementById("tf-plot"), { width: 960, height: 300, xlog: true, xlabel: "すき間 h/a", ylabel: "垂直方向の自己抵抗 ÷ 6πμa" });
-{
-  const u = 6 * Math.PI;
-  const tfB = gridB.map((sc) => torqueFree(resistance12(sc, [0, 0, 1]))[0][0] / u);
-  const tfA = gridA.map((sc) => torqueFree(resistance12(sc, [0, 0, 1]))[0][0] / u);
-  tfPlot.update({
-    series: [
-      { name: "案B 回転を固定（Y^A₁₁）", color: "var(--c1)", width: 3, points: gaps.map((g, k) => [g, gridB[k].YA11]) },
-      { name: "案B トルクをゼロ（自由に回る）", color: "var(--c2)", width: 3, points: gaps.map((g, k) => [g, tfB[k]]) },
-      { name: "案A トルクをゼロ（ページ8〜11の RPY 逆行列）", color: "var(--c2)", dash: "6 4", points: gaps.map((g, k) => [g, tfA[k]]) },
-    ],
-    hlines: [{ y: 1 }],
-  });
+const tfPlot = createPlot(document.getElementById("tf-plot"), { width: 960, height: 300, xlog: true, xlabel: "すき間 ξ", ylabel: "垂直方向の自己抵抗 ÷ 6πμa_α" });
+function renderTf() {
+  const c = curves(), e = [0, 0, 1];
+  const tfB = c.B.map((sc) => torqueFree(resistance12(sc, e, radii()))), tfA = c.A.map((sc) => torqueFree(resistance12(sc, e, radii())));
+  const series = [];
+  const spheres = st.lambda === 1 ? [0] : [0, 1];
+  for (const p of spheres) {
+    const k = 3 * p, unit = 6 * Math.PI * (p === 0 ? 1 : st.lambda), tag = p === 0 ? "球 1" : "球 2（小）";
+    series.push({ name: `案B 回転を固定（${tag}）`, color: p === 0 ? "var(--c1)" : "var(--c3)", width: 3, points: gaps.map((g, i) => [g, p === 0 ? c.B[i].YA11 : c.B[i].YA22]) });
+    series.push({ name: `案B トルクをゼロ（${tag}）`, color: p === 0 ? "var(--c2)" : "var(--c4)", width: 3, points: gaps.map((g, i) => [g, tfB[i][k][k] / unit]) });
+    series.push({ name: `案A トルクをゼロ（${tag}）`, color: p === 0 ? "var(--c2)" : "var(--c4)", dash: "6 4", points: gaps.map((g, i) => [g, tfA[i][k][k] / unit]) });
+  }
+  tfPlot.update({ series, hlines: [{ y: 1 }] });
 }
 
-renderFam();
-renderTable();
-renderMat();
+function renderAll() {
+  atGap = null;
+  renderFam(); renderTable(); renderMat(); renderFar(); renderTf();
+}
+renderAll();
