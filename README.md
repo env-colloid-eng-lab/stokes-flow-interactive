@@ -18,13 +18,14 @@ three.js と KaTeX は `vendor/` に固定版を同梱しているので、CDN �
 
 ## 公開（GitHub Pages）
 
-リポジトリのルートにある `index.html` をそのまま配信する。ビルドは不要。
+ビルドは不要。`main` に push されるたびに `.github/workflows/pages.yml` がテストを実行し、サイトに必要なファイル（`index.html`、`pages/`、`src/`、`vendor/`）だけを GitHub Pages に配信する。`reference/`（Julia 実習）、`docs/`、`scripts/`、`test/` は配信されない。
 
 1. リポジトリの Settings → Pages を開く。
-2. Build and deployment の Source を「Deploy from a branch」にし、Branch を `main`、フォルダを `/ (root)` にして保存する。
-3. 1〜2 分後に `https://env-colloid-eng-lab.github.io/stokes-flow-interactive/` で公開される。以後は `main` にマージするたびに自動で更新される。
+2. Build and deployment の Source を「GitHub Actions」にする。
+3. Actions タブで「pages」ワークフローを選び、Run workflow を押す（以後は `main` へのマージのたびに自動で更新される）。
+4. `https://env-colloid-eng-lab.github.io/stokes-flow-interactive/` で公開される。
 
-`.nojekyll` を置いているので、Jekyll による変換は行われず、ファイルがそのまま配信される。リポジトリが公開設定なので、サイトも誰でも見られる。
+リポジトリを非公開にしてもサイトは公開のままにできるが、それには組織が GitHub Team 以上のプランである必要がある（Free では非公開リポジトリの Pages は使えない）。サイトの JavaScript はブラウザに送られるので、`src/` の中身は誰でも読める点に注意。
 
 ## テスト
 
