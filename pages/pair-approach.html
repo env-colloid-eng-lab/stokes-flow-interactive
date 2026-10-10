@@ -18,7 +18,7 @@
   <p class="caption" id="sec"></p>
   <div id="links"></div>
 
-  <h2>四つの答え方</h2>
+  <h2>いくつかの答え方</h2>
   <div class="prose">
     <p>球 1 を $x=0$、球 2 を $x=r$ に置き、$\boldsymbol f_1=+F\boldsymbol e_x$、$\boldsymbol f_2=-F\boldsymbol e_x$ を加える。中心線方向の抵抗を $6\pi\mu a$ で割った $X_{11},X_{12}$ を使うと、接近速度 $V=-\dot h$ は</p>
     $$V=U_1-U_2=\frac{2F}{6\pi\mu a\,(X_{11}-X_{12})}$$
@@ -29,6 +29,7 @@
       <tr><td>RPY ＋ 教材潤滑</td><td>上に $\zeta_n=\frac{3\pi\mu a^2}{2}\left(\frac1h-\frac1{h_c}\right)$ を $h&lt;h_c$ で加える</td><td>$1/h$ で発散。$h_c$ の選び方は近似の一部</td></tr>
       <tr><td>JO 級数（$K$ 次）</td><td>厳密解を $1/s$ で展開した級数（$s=r/a$）</td><td>近いほど多くの項が要る。打ち切ると近接では使えない</td></tr>
       <tr><td>境界条件解法（$L$ 次）</td><td>厳密解を球面上の点で満たすよう数値的に解く</td><td>$L$ を増やせば近接でも精度が上がる。境界残差で確認する</td></tr>
+      <tr><td>案B（JO 全関数）</td><td>JO 級数 200 次に、近接の特異項を閉じた形で分けて足したもの（<a href="model-compare.html">13.</a>）</td><td>$1/h$ と $\ln(1/h)$ を正しく含み、接触の近くまで使える</td></tr>
     </table>
     <p>薄い隙間の流れ（潤滑理論）からは、主要項として $F\simeq\dfrac{6\pi\mu R_*^2}{h}V$、$\dfrac1{R_*}=\dfrac1{a_1}+\dfrac1{a_2}$ が得られる。等半径では $R_*=a/2$ なので $X_{11}-X_{12}\simeq\dfrac{a}{2h}$ となる。</p>
   </div>

@@ -82,3 +82,15 @@ export function torqueFree(R) {
   const A = getBlock(R, 0, 0, 6), Bt = getBlock(R, 0, 6, 6, 6), B = getBlock(R, 6, 0, 6, 6), C = getBlock(R, 6, 6, 6);
   return sub(A, matmul(Bt, solve(C, B)));
 }
+
+/**
+ * Model B in the form used by pages 8 and 9: torque-free pair coefficients along (par) and across
+ * (perp) the line of centres, self and cross, for the resistance R and its inverse M (dimensional).
+ */
+export function coefficientsB(r, { a = 1, mu = 1 } = {}) {
+  if (!(r > 2 * a)) throw new RangeError("the spheres must not touch (r > 2a)");
+  const T = torqueFree(resistance12(joScalarsAtGap((r - 2 * a) / a), [0, 0, 1], { a, mu }));
+  const R = { par: { self: T[2][2], cross: T[2][5] }, perp: { self: T[0][0], cross: T[0][3] } };
+  const invert2 = ({ self, cross }) => { const d = self * self - cross * cross; return { self: self / d, cross: -cross / d }; };
+  return { R, M: { par: invert2(R.par), perp: invert2(R.perp) } };
+}

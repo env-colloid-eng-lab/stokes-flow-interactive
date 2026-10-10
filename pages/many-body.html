@@ -45,6 +45,7 @@
   </div>
 
   <h2>沈降させる：成分が時間とともに変わる</h2>
+  <div class="prose"><p>「近似」では RPY・Oseen のほかに「SD（案B）」を選べる。SD は、遠方の相互作用を回転も含む RPY で、近い対を Jeffrey–Onishi の厳密な二球抵抗で補正し（<a href="sd-structure.html">11.</a> の式 14.2）、球が自由に回るとして解く。潤滑の抵抗が働くので、RPY では接触の手前で止めるしかない配置でも、球は重ならずに近づき続ける。</p></div>
   <div class="controls" id="sed-controls"></div>
   <div class="grid side">
     <div class="card">
@@ -63,7 +64,7 @@
     <div class="card">
       <h3>選んだ成分の時間変化</h3>
       <div id="sed-series"></div>
-      <p class="caption">実線は $R$、破線は二体の和 $R^{2B}$、点線はその差。配置が変わるたびに、差（多体の寄与）も変わる。</p>
+      <p class="caption">実線は $R$、破線は二体の和 $R^{2B}$、点線はその差。配置が変わるたびに、差（多体の寄与）も変わる。「SD（案B）」では、$R$ は回転を含む SD 型の抵抗から回転を消去したもの（<a href="sd-structure.html">11.</a>、<a href="model-compare.html">13.</a>）、$R^{2B}$ は厳密な二球抵抗（球は自由に回る）の和になる。</p>
     </div>
     <div class="card">
       <h3>移動度行列の固有値</h3>
