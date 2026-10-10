@@ -49,7 +49,7 @@ export function createScene(container, { width = 480, height = 340 } = {}) {
       layer.append(s("path", { d, fill: "none", stroke: p.color ?? "var(--muted)", "stroke-width": p.width ?? 1.5, "stroke-dasharray": p.dash ?? null }));
     }
     for (const sp of spheres) {
-      layer.append(s("circle", { cx: X(sp.x), cy: Z(sp.z), r: sp.a * k, fill: sp.fill ?? "var(--accent-soft)", stroke: sp.stroke ?? "var(--accent)", "stroke-width": 1.5 }));
+      layer.append(s("circle", { cx: X(sp.x), cy: Z(sp.z), r: sp.a * k, fill: sp.fill ?? "var(--accent-soft)", stroke: sp.stroke ?? "var(--accent)", "stroke-width": sp.strokeWidth ?? 1.5 }));
       if (sp.label) layer.append(s("text", { x: X(sp.x), y: Z(sp.z) + 4, "text-anchor": "middle", style: "font-size:13px;font-weight:700;fill:var(--ink)" }, sp.label));
     }
     for (const a of arrows) {
@@ -61,7 +61,7 @@ export function createScene(container, { width = 480, height = 340 } = {}) {
       const ox = (-a.vz * k / len) * off, oy = (-a.vx * k / len) * off;
       layer.append(s("line", {
         x1: X(a.x) + ox, y1: Z(a.z) + oy, x2: X(a.x + a.vx) + ox, y2: Z(a.z + a.vz) + oy,
-        stroke: color, "stroke-width": a.width ?? 2.5, "marker-end": `url(#${marker(color)})`,
+        stroke: color, "stroke-width": a.width ?? 2.5, "marker-end": `url(#${marker(color)})`, "stroke-opacity": a.opacity ?? null,
       }));
       if (a.label) layer.append(s("text", { x: X(a.x + a.vx) + 6, y: Z(a.z + a.vz) - 4, style: `fill:${color};font-size:12px` }, a.label));
     }
@@ -77,5 +77,13 @@ export function createScene(container, { width = 480, height = 340 } = {}) {
       if (lab.out) layer.append(s("text", { x: ox - 14, y: oz + 14 }, lab.out));
     }
   }
-  return { draw, svg };
+  // world coordinates (x, z) of a pointer event, for the view last passed to draw()
+  function toWorld(evt, view) {
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const k = width / view.span;
+    return [view.cx + (p.x - width / 2) / k, view.cz - (p.y - height / 2) / k];
+  }
+  return { draw, svg, toWorld };
 }
