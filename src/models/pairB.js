@@ -10,9 +10,9 @@
 // model B uses the Jeffrey-Onishi functions of src/physics/joFull.js.
 import { zeros, inv, getBlock, setBlock, sub, matmul, transpose, solve } from "../core/linalg.js";
 import { rpyPair, rpyPairUnequal, selfMobility } from "../physics/rpy.js";
-import { joScalarsAtGap, joPairScalarsAtGap } from "../physics/joFull.js";
+import { joScalarsAtGap, joPairScalarsAtGap, NAMES10 } from "../physics/joFull.js";
 
-export const NAMES = ["XA11", "XA12", "YA11", "YA12", "YB11", "YB12", "XC11", "XC12", "YC11", "YC12"];
+export const NAMES = NAMES10;
 export const NAMES16 = [...NAMES, "XA22", "YA22", "YB21", "YB22", "XC22", "YC22"];
 
 // eps_ijk e_k: (eps . e) v = v x e ... as a matrix M_ij = eps_ijk e_k
@@ -35,6 +35,8 @@ const withEqual = (sc) => ({ XA22: sc.XA11, YA22: sc.YA11, XC22: sc.XC11, YC22: 
  * the scalars of sphere 2 (…22, YB21) are needed for unequal radii (joPairScalarsAtGap gives them).
  */
 export function resistance12(scalars, e, { a = 1, a1 = a, a2 = a, mu = 1 } = {}) {
+  if (a1 !== a2 && !["XA22", "YA22", "YB21", "YB22", "XC22", "YC22"].every((k) => k in scalars))
+    throw new RangeError("unequal radii need the scalars of sphere 2 (use joPairScalarsAtGap)");
   const sc = withEqual(scalars), u = units(a1, a2, mu);
   const A = (ab) => scaled(axisym(sc[`XA${ab}`], sc[`YA${ab}`], e), u[ab].A);
   const C = (ab) => scaled(axisym(sc[`XC${ab}`], sc[`YC${ab}`], e), u[ab].C);
@@ -70,7 +72,8 @@ export function scalarsOf(R, { a = 1, a1 = a, a2 = a, mu = 1 } = {}) {
  */
 export function rpyMobility12(rvec, { a = 1, a1 = a, a2 = a, mu = 1 } = {}) {
   const r = Math.hypot(...rvec);
-  if (!(r >= a1 + a2)) throw new RangeError("non-overlapping spheres required (r >= a1 + a2)");
+  // equal spheres may touch (rpyPair is continuous there); the unequal RPY form needs r > a1 + a2
+  if (!(a1 === a2 ? r >= 2 * a1 : r > a1 + a2)) throw new RangeError("non-overlapping spheres required");
   const e = rvec.map((x) => x / r);
   const M = zeros(12);
   const eye3 = (c) => [0, 1, 2].map((i) => [0, 1, 2].map((j) => (i === j ? c : 0)));

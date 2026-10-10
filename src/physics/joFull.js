@@ -3,7 +3,7 @@
 //
 // Each function is written as  F(s) = S(s) + sum_m (c_m - sigma_m) s^-m,
 // where c_m are the far-field series coefficients (from the recurrences, precomputed in
-// src/data/joLambda1.js) and S(s) is a closed-form function that carries the near-contact
+// src/data/joValues.js) and S(s) is a closed-form function that carries the near-contact
 // singularities (1/xi, ln 1/xi, xi ln 1/xi; xi = s - 2). sigma_m are the series coefficients of S,
 // computed here, so the identity holds exactly for s > 2 whatever S is; S only speeds up the
 // convergence near contact. The singular coefficients are those of JO (1984), eqs. (3.19),
@@ -48,7 +48,12 @@ const BASIS = {
 const even = 0, odd = 1;
 export const NAMES10 = ["XA11", "XA12", "YA11", "YA12", "YB11", "YB12", "XC11", "XC12", "YC11", "YC12"];
 const defsCache = new Map();
+function checkLambda(lambda) {
+  if (typeof lambda !== "number" || !LAMBDAS.includes(lambda))
+    throw new RangeError(`size ratio ${lambda} is not available (use one of ${LAMBDAS.join(", ")})`);
+}
 export function functionsFor(lambda = 1) {
+  checkLambda(lambda);
   if (defsCache.has(lambda)) return defsCache.get(lambda);
   const l = lambda, L = 1 + l;
   const A = { g1: (2 * l * l) / L ** 3, g2: (l * (1 + 7 * l + l * l)) / (5 * L ** 3), g3: (1 + 18 * l - 29 * l * l + 18 * l ** 3 + l ** 4) / (42 * L ** 3) };
@@ -81,9 +86,8 @@ export function functionsFor(lambda = 1) {
 export const FUNCTIONS = functionsFor(1).defs;
 
 function dataFor(lambda) {
-  const d = DATA[String(lambda)];
-  if (!d) throw new RangeError(`size ratio ${lambda} is not available (use one of ${LAMBDAS.join(", ")})`);
-  return d;
+  checkLambda(lambda);
+  return DATA[String(lambda)];
 }
 
 // remainder coefficients (c_m - sigma_m), cached per function, ratio and order
@@ -137,18 +141,26 @@ export function joScalarsAtGap(xi, opts) {
  * X_22(lambda) = X_11(1/lambda), Y^B_22(lambda) = -Y^B_11(1/lambda), Y^B_21(lambda) = -Y^B_12(1/lambda).
  * (X^A_21 = X^A_12 etc. for the symmetric families.)
  */
-export function joPairScalarsAtGap(xi, { lambda = 1, K } = {}) {
-  const one = joScalarsAtGap(xi, { lambda, K });
-  const inv = lambda === 1 ? one : joScalarsAtGap(xi, { lambda: 1 / lambda, K });
-  return {
-    ...one,
-    XA22: inv.XA11, YA22: inv.YA11, XC22: inv.XC11, YC22: inv.YC11,
-    YB22: -inv.YB11, YB21: -inv.YB12,
-  };
+export function joPairScalarsAtGap(xi, { lambda = 1, ...opts } = {}) {
+  const one = joScalarsAtGap(xi, { lambda, ...opts });
+  const inv = lambda === 1 ? one : joScalarsAtGap(xi, { lambda: 1 / lambda, ...opts });
+  return pairFromBoth(one, inv);
 }
+// JO (1.9): the scalars of sphere 2 are those of sphere 1 at 1/lambda (Y^B changes sign)
+const pairFromBoth = (one, inv) => ({
+  ...one,
+  XA22: inv.XA11, YA22: inv.YA11, XC22: inv.XC11, YC22: inv.YC11,
+  YB22: -inv.YB11, YB21: -inv.YB12,
+});
 export const joScalars = (s, opts) => joScalarsAtGap(s - 2, opts);
 
 // Leading near-contact behaviour (1/xi and ln(1/xi) parts), for display next to the full functions.
 export const nearContactAt = (name, xi, lambda = 1) => functionsFor(lambda).lead[name](xi);
+// the same for all 16 scalars of a pair (X^C has no singular term: NaN)
+export function nearContactPair(xi, lambda = 1) {
+  const at = (l) => Object.fromEntries(NAMES10.map((n) => [n, n.startsWith("XC") ? NaN : nearContactAt(n, xi, l)]));
+  const one = at(lambda);
+  return pairFromBoth(one, lambda === 1 ? one : at(1 / lambda));
+}
 export const nearContact = Object.fromEntries(NAMES10.filter((n) => n[0] !== "X" || n[1] !== "C")
   .map((n) => [n, (xi) => nearContactAt(n, xi, 1)]));

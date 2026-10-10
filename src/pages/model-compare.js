@@ -1,7 +1,7 @@
 import { initPage, h, field, segmented, slider, fmt, frameThrottle } from "../ui/page.js";
 import { createPlot } from "../ui/plot.js";
 import { createMatrixView } from "../ui/matrixView.js";
-import { joScalarAtGap, nearContactAt } from "../physics/joFull.js";
+import { joPairScalarsAtGap, nearContactPair } from "../physics/joFull.js";
 import { pairScalarsUnequal, resistance12, torqueFree, NAMES16 } from "../models/pairB.js";
 
 initPage("p13");
@@ -21,20 +21,9 @@ const gaps = Array.from({ length: 121 }, (_, k) => 10 ** (-3 + (4 * k) / 120));
 const radii = () => ({ a1: 1, a2: st.lambda });
 const shown = (names) => (st.lambda === 1 ? names.filter((n) => !n.endsWith("22") && !n.endsWith("21")) : names);
 
-// model-B value of any of the 16 scalars, plain series or full; "22"/"21" come from 1/lambda (JO 1.9)
-function plainValue(n, xi) {
-  const l = st.lambda, k = n.slice(2), base = n.slice(0, 2);
-  if (k === "11" || k === "12") return joScalarAtGap(n, xi, { plain: true, lambda: l });
-  const v = joScalarAtGap(base + (k === "22" ? "11" : "12"), xi, { plain: true, lambda: 1 / l });
-  return base === "YB" ? -v : v;
-}
-function leadValue(n, xi) {
-  const l = st.lambda, k = n.slice(2), base = n.slice(0, 2);
-  if (base === "XC") return NaN;
-  if (k === "11" || k === "12") return nearContactAt(n, xi, l);
-  const v = nearContactAt(base + (k === "22" ? "11" : "12"), xi, 1 / l);
-  return base === "YB" ? -v : v;
-}
+// model-B plain series (no singular part) and leading near-contact terms, all 16 scalars
+const plainAt = (xi) => joPairScalarsAtGap(xi, { lambda: st.lambda, plain: true });
+const leadAt = (xi) => nearContactPair(xi, st.lambda);
 
 // cached curves for the current ratio
 let grid = null;
@@ -44,14 +33,14 @@ function curves() {
   grid = { lambda: st.lambda, A, B, plain: {} };
   return grid;
 }
-const plainCurve = (n) => (grid.plain[n] ??= gaps.map((g) => plainValue(n, g)));
+const plainCurve = (n) => (grid.plain.all ??= gaps.map((g) => plainAt(g))).map((p) => p[n]);
 
 // scalars at the gap chosen with the slider, computed once per gap and ratio
 let atGap = null;
 function scalarsAtGap() {
   if (!atGap || atGap.gap !== st.gap || atGap.lambda !== st.lambda)
     atGap = { gap: st.gap, lambda: st.lambda, A: pairScalarsUnequal(st.gap, "A", radii()), B: pairScalarsUnequal(st.gap, "B", radii()), plain: null };
-  if (st.eval === "plain" && !atGap.plain) atGap.plain = Object.fromEntries(NAMES16.map((n) => [n, plainValue(n, st.gap)]));
+  if (st.eval === "plain" && !atGap.plain) atGap.plain = plainAt(st.gap);
   return atGap;
 }
 
@@ -72,9 +61,9 @@ function renderFam() {
     const tag = n.slice(2), color = COLOR[tag];
     series.push({ name: `案B ${tag}`, color, width: 3, points: gaps.map((g, k) => [g, st.eval === "plain" ? plainCurve(n)[k] : c.B[k][n]]) });
     series.push({ name: `案A ${tag}`, color, dash: "6 4", points: gaps.map((g, k) => [g, c.A[k][n]]) });
-    if (st.fam !== "XC") series.push({ color: "var(--muted)", dash: "2 3", points: gaps.filter((g) => g < 0.3).map((g) => [g, leadValue(n, g)]) });
+    if (st.fam !== "XC") series.push({ color: "var(--muted)", dash: "2 3", points: gaps.filter((g) => g < 0.3).map((g) => [g, leadAt(g)[n]]) });
   });
-  series.push({ name: "近接の主要項", color: "var(--muted)", dash: "2 3", points: [] });
+  if (st.fam !== "XC") series.push({ name: "近接の主要項", color: "var(--muted)", dash: "2 3", points: [] });
   famPlot.update({ series, hlines: [{ y: 0 }], vlines: [{ x: st.gap }], ydomain: f.ydomain });
 }
 
@@ -156,14 +145,14 @@ function renderFar() {
 const tfPlot = createPlot(document.getElementById("tf-plot"), { width: 960, height: 300, xlog: true, xlabel: "すき間 ξ", ylabel: "垂直方向の自己抵抗 ÷ 6πμa_α" });
 function renderTf() {
   const c = curves(), e = [0, 0, 1];
-  const tf = (sc) => torqueFree(resistance12(sc, e, radii()));
+  const tfB = c.B.map((sc) => torqueFree(resistance12(sc, e, radii()))), tfA = c.A.map((sc) => torqueFree(resistance12(sc, e, radii())));
   const series = [];
   const spheres = st.lambda === 1 ? [0] : [0, 1];
   for (const p of spheres) {
     const k = 3 * p, unit = 6 * Math.PI * (p === 0 ? 1 : st.lambda), tag = p === 0 ? "球 1" : "球 2（小）";
     series.push({ name: `案B 回転を固定（${tag}）`, color: p === 0 ? "var(--c1)" : "var(--c3)", width: 3, points: gaps.map((g, i) => [g, p === 0 ? c.B[i].YA11 : c.B[i].YA22]) });
-    series.push({ name: `案B トルクをゼロ（${tag}）`, color: p === 0 ? "var(--c2)" : "var(--c4)", width: 3, points: gaps.map((g, i) => [g, tf(c.B[i])[k][k] / unit]) });
-    series.push({ name: `案A トルクをゼロ（${tag}）`, color: p === 0 ? "var(--c2)" : "var(--c4)", dash: "6 4", points: gaps.map((g, i) => [g, tf(c.A[i])[k][k] / unit]) });
+    series.push({ name: `案B トルクをゼロ（${tag}）`, color: p === 0 ? "var(--c2)" : "var(--c4)", width: 3, points: gaps.map((g, i) => [g, tfB[i][k][k] / unit]) });
+    series.push({ name: `案A トルクをゼロ（${tag}）`, color: p === 0 ? "var(--c2)" : "var(--c4)", dash: "6 4", points: gaps.map((g, i) => [g, tfA[i][k][k] / unit]) });
   }
   tfPlot.update({ series, hlines: [{ y: 1 }] });
 }

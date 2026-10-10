@@ -114,3 +114,12 @@ test("ratios that were not generated are rejected", () => {
   assert.throws(() => joScalarAtGap("XA11", 0.5, { lambda: 3 }), RangeError);
   assert.throws(() => pairScalarsUnequal(0.5, "B", { a1: 1, a2: 3 }), RangeError);
 });
+
+test("unequal radii without the scalars of sphere 2, or a ratio given as a string, are rejected", () => {
+  assert.throws(() => resistance12({ XA11: 1, XA12: 0, YA11: 1, YA12: 0, YB11: 0, YB12: 0, XC11: 1, XC12: 0, YC11: 1, YC12: 0 }, [0, 0, 1], { a1: 1, a2: 0.5 }), RangeError);
+  assert.throws(() => joScalarAtGap("XA11", 0.1, { lambda: "0.5" }), RangeError);
+  assert.throws(() => rpyMobility12([0, 0, 1.5], { a1: 1, a2: 0.5 }), RangeError); // touching unequal spheres
+  // plain series and leading terms for the whole pair
+  const p = joPairScalarsAtGap(3, { lambda: 0.5, plain: true }), f = joPairScalarsAtGap(3, { lambda: 0.5 });
+  for (const n of NAMES16) close(p[n], f[n], { rtol: 1e-11, atol: 1e-14 }, n);
+});

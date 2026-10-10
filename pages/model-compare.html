@@ -39,12 +39,12 @@
 
   <h2>関数をすき間の関数として比べる</h2>
   <div class="controls" id="fam-controls"></div>
-  <div class="card"><div id="fam-plot"></div><p class="caption">実線が案B、破線が案A、点線が案B の近接での主要項。色は 11（青）、12（橙）、22（紫）、21（緑）。「級数だけ」にすると、特異項を分けない遠方の級数を 200 項で打ち切った値を描く。打ち切った級数は、すき間が 0.05 より狭くなると外れ始め、$X^A_{11}$ では $h/a=0.02$ で 12%、$0.01$ で 34% ずれる。</p></div>
+  <div class="card"><div id="fam-plot"></div><p class="caption">実線が案B、破線が案A、点線が案B の近接での主要項。色は 11（青）、12（橙）、22（紫）、21（緑）。「級数だけ」にすると、特異項を分けない遠方の級数を 200 項で打ち切った値を描く。打ち切った級数は、等しい半径では $\xi$ が 0.05 より狭くなると外れ始め、$X^A_{11}$ では $\xi=0.02$ で 12%、$0.01$ で 34% ずれる（$\xi=2h/(a_1+a_2)$、等しい半径なら $h/a$）。半径の比が大きいほど、もっと広いすき間から外れる。</p></div>
   <div class="controls" id="gap-controls"></div>
   <div class="card"><div id="fam-table"></div></div>
 
   <h2>12×12 の抵抗行列を並べる</h2>
-  <div class="prose"><p>上で選んだすき間で、行列全体を比べる。各ブロックをそれぞれの単位（$6\pi\mu a$、$4\pi\mu a^2$、$8\pi\mu a^3$）で割って表示する。案A の値は接近しても有限にとどまる。案B との差は $A$ ブロックだけでなく、並進と回転の結合（$B$ ブロック）や回転の抵抗（$C$ ブロック）にも現れる。</p></div>
+  <div class="prose"><p>上で選んだすき間で、行列全体を比べる。各ブロックをそれぞれの単位（$3\pi\mu(a_\alpha+a_\beta)$、$\pi\mu(a_\alpha+a_\beta)^2$、$\pi\mu(a_\alpha+a_\beta)^3$。等しい半径なら $6\pi\mu a$、$4\pi\mu a^2$、$8\pi\mu a^3$）で割って表示する。案A の値は接近しても有限にとどまる。案B との差は $A$ ブロックだけでなく、並進と回転の結合（$B$ ブロック）や回転の抵抗（$C$ ブロック）にも現れる。</p></div>
   <div class="controls" id="mat-controls"></div>
   <div class="card"><div id="mat"></div></div>
 

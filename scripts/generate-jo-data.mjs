@@ -4,15 +4,14 @@
 // for K = 200) and the polynomials are then evaluated at each ratio.
 // Run: node --max-old-space-size=12000 scripts/generate-jo-data.mjs [K]
 import { writeFileSync } from "node:fs";
-import { joAllPolynomials } from "../src/physics/joRecurrence.js";
+import { joAllPolynomials, hornerAt } from "../src/physics/joRecurrence.js";
 
 const K = Number(process.argv[2] ?? 200);
 const LAMBDAS = [1, 0.5, 2, 0.25, 4];
 const t0 = Date.now();
 const P = joAllPolynomials(K);
-const ev = (c, l) => c.reduceRight((acc, x) => acc * l + x, 0);
 const block = LAMBDAS.map((l) => {
-  const fams = Object.entries(P).map(([name, rows]) => `    ${name}: [${rows.map((c) => ev(c, l).toPrecision(17)).join(", ")}],`);
+  const fams = Object.entries(P).map(([name, rows]) => `    ${name}: [${rows.map((c) => hornerAt(c, l).toPrecision(17)).join(", ")}],`);
   return `  "${l}": {\n${fams.join("\n")}\n  },`;
 });
 writeFileSync(new URL("../src/data/joValues.js", import.meta.url),
