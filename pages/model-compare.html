@@ -14,7 +14,7 @@
 <body>
 <main>
   <h1>13. 案A と案B を比べる</h1>
-  <p class="lead">二つの球の抵抗を、並進と回転の両方について 12×12 の行列として求める方法を二つ並べる。案A は RPY 移動度を逆行列にしたもので、ページ8〜11で使ってきた。案B は Jeffrey と Onishi の厳密な抵抗関数で、近接での特異性まで含む。同じ条件で並べると、どの成分が、どの距離から、どれだけ違うかが見える。</p>
+  <p class="lead">二つの球の抵抗を、並進と回転の両方について 12×12 の行列として求める方法を二つ並べる。半径の違う二球も扱える。案A は RPY 移動度を逆行列にしたもので、ページ8〜11で使ってきた。案B は Jeffrey と Onishi の厳密な抵抗関数で、近接での特異性まで含む。同じ条件で並べると、どの成分が、どの距離から、どれだけ違うかが見える。</p>
   <p class="caption" id="sec"></p>
   <div id="links"></div>
 
@@ -26,16 +26,20 @@
     \begin{pmatrix}\boldsymbol U_1\\ \boldsymbol U_2\\ \boldsymbol\Omega_1\\ \boldsymbol\Omega_2\end{pmatrix},\qquad
     A_{\alpha\beta}=6\pi\mu a\left[X^A_{\alpha\beta}\boldsymbol e\boldsymbol e+Y^A_{\alpha\beta}(I-\boldsymbol e\boldsymbol e)\right]$$
     <p>と書ける（$\boldsymbol e$ は球 1 から球 2 への単位ベクトル、$\tilde B$ は $B$ の転置）。$B_{\alpha\beta}=4\pi\mu a^2Y^B_{\alpha\beta}\,\boldsymbol\varepsilon\cdot\boldsymbol e$、$C$ は $8\pi\mu a^3$ を単位に $A$ と同じ形をとる。軸対称性のおかげで、行列全体は 10 個のスカラー関数で決まる。</p>
+    <p>半径が $a_1,a_2$ と違うときは、$A_{\alpha\beta}$ の単位が $3\pi\mu(a_\alpha+a_\beta)$、$B$ が $\pi\mu(a_\alpha+a_\beta)^2$、$C$ が $\pi\mu(a_\alpha+a_\beta)^3$ となり、関数は距離 $s=2r/(a_1+a_2)$ と半径比 $\lambda=a_2/a_1$ の関数になる。球 2 から見た関数（$X_{22}$ など）は、$\lambda$ を $1/\lambda$ に置き換えた $X_{11}$ で与えられる。</p>
     <ul>
       <li><strong>案A</strong>：並進と回転を含む RPY 移動度（12×12）を逆行列にする。回転の部分は教科書の範囲外だが、同じ近似の延長である。距離が近づいても有限のままで、潤滑の発散を含まない。</li>
       <li><strong>案B</strong>：Jeffrey と Onishi（1984）の漸化式から、遠方の級数の係数を 200 次まで作る。接触のすき間 $\xi=h/a$ での特異性（$1/\xi$、$\ln(1/\xi)$）を閉じた形の関数で分けて足し、級数からはその分を差し引く。こうすると、級数がほとんど収束しない接触の近くでも値が求まる。</li>
     </ul>
-    <p>級数の係数は論文に印刷された多項式と一致することを、近接の定数は論文の表（等しい半径）と一致することを、テストで確かめている。</p>
+    <p>級数の係数は論文に印刷された多項式と一致することを、近接の定数は論文の表（$\lambda=1,1/2,1/4$）と一致することを、テストで確かめている。半径の比が大きくなるほど級数の収束は遅くなるので、ここでは比 1:4 までにとどめる。</p>
+    <p>論文の式には誤植がいくつかある。Townsend（2019 年の arXiv 版、2023 年に出版）が訂正したもののうち、$Y^C_{12}$ の係数 $g_5$ と $Y^A$ の漸化式の一項は、この計算でも必要だった。さらに $Y^C_{12}$ の近接の特異項は、論文の一部の式にある因子 $(1+\lambda)^3/8$ を付けずに $Y^C_{12}$ そのものに掛けないと、半径が違うときに級数が収束しない。</p>
   </div>
+
+  <div class="controls" id="ratio-controls"></div>
 
   <h2>関数をすき間の関数として比べる</h2>
   <div class="controls" id="fam-controls"></div>
-  <div class="card"><div id="fam-plot"></div><p class="caption">実線が案B、破線が案A、点線が案B の近接での主要項。「級数だけ」にすると、特異項を分けない遠方の級数を 200 項で打ち切った値を描く。打ち切った級数は、すき間が 0.05 より狭くなると外れ始め、$X^A_{11}$ では $h/a=0.02$ で 12%、$0.01$ で 34% ずれる。</p></div>
+  <div class="card"><div id="fam-plot"></div><p class="caption">実線が案B、破線が案A、点線が案B の近接での主要項。色は 11（青）、12（橙）、22（紫）、21（緑）。「級数だけ」にすると、特異項を分けない遠方の級数を 200 項で打ち切った値を描く。打ち切った級数は、すき間が 0.05 より狭くなると外れ始め、$X^A_{11}$ では $h/a=0.02$ で 12%、$0.01$ で 34% ずれる。</p></div>
   <div class="controls" id="gap-controls"></div>
   <div class="card"><div id="fam-table"></div></div>
 
