@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>線形流れの中の球</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/linear-flows.js"></script>
+</head>
+<body>
+<main>
+  <h1>15. 線形流れの中の球</h1>
+  <p class="lead">一様流・せん断・伸長・回転の流れの中に球を一つ置く。球は流れに乗って動き、流れと一緒に回る。それでも流れを乱すのはどの場合か。流れを並進・回転・変形の三つに分けて確かめる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>線形流れの三つの部分</h2>
+  <div class="prose">
+    <p>位置について一次の流れは、どれも次の形に書ける（<a href="velocity-gradient.html">2.</a> の分解）。</p>
+    $$u^\infty(x)=U+\Omega^\infty\times x+E\cdot x$$
+    <p>$U$ は一様な並進、$\Omega^\infty$ は流体要素が回る角速度（渦度の半分）、$E$ は変形速度（対称でトレース 0）である。このページの四つの流れは、速さの尺度 $G$ を使って次のように分かれる（$x$ は右、$z$ は上、$y$ は画面の奥向き）。</p>
+  </div>
+  <div id="flow-table"></div>
+  <p class="prose">単純せん断は、回転 $\Omega^\infty=\tfrac{G}{2}e_y$ と、軸を 45° 傾けた伸長の和である。せん断の中の球の振る舞いは、回転の中と伸長の中の振る舞いを足したものになる。</p>
+
+  <h2>流れを見る</h2>
+  <div class="controls" id="lf-controls"></div>
+  <div class="grid wide">
+    <div class="card">
+      <div id="lf-scene"></div>
+      <div class="controls" id="lf-anim"></div>
+      <p class="caption" id="lf-caption"></p>
+    </div>
+    <div class="card">
+      <h3>球の動き、力・トルク、ストレスレット</h3>
+      <div id="lf-table"></div>
+      <p class="caption">$G=1$、$a=\mu=1$。力・トルクは球が流体に及ぼすもので、ストークス流れでは球を支える外力・外トルクに等しい。自由な球では 0 になる。ストレスレット $S$ は、流体が球に及ぼす表面力の一次モーメント（対称・トレース 0 の部分）で、懸濁液の応力に $+S$ として加わる（<a href="single-sphere.html">6.</a> と同じ定義）。</p>
+    </div>
+  </div>
+
+  <h2>球が加える乱れ</h2>
+  <div class="prose">
+    <p>球の中心での流れの速さを $u^\infty(0)=U$ とする。球が速度 $U_p$、角速度 $\Omega_p$ で動くとき、球のまわりの流れは、背景の流れに三つの乱れを足したものになる（$r=|x|$）。</p>
+    $$u=u^\infty+\underbrace{\Big[-\tfrac{3a}{4}\Big(\tfrac{I}{r}+\tfrac{xx}{r^3}\Big)-\tfrac{a^3}{4}\Big(\tfrac{I}{r^3}-\tfrac{3xx}{r^5}\Big)\Big]\cdot(U-U_p)}_{\text{並進のずれ：}1/r}-\underbrace{\tfrac{a^3}{r^3}(\Omega^\infty-\Omega_p)\times x}_{\text{回転のずれ：}1/r^2}-\underbrace{\Big[\tfrac{5a^3}{2r^5}(x\cdot E\cdot x)\,x+\tfrac{a^5}{r^5}\Big(E\cdot x-\tfrac{5(x\cdot E\cdot x)}{2r^2}x\Big)\Big]}_{\text{変形できないこと：}1/r^2}$$
+    <p>球の表面 $r=a$ では、三つの括弧がちょうど $U_p-U$、$(\Omega_p-\Omega^\infty)\times x$、$-E\cdot x$ になり、$u=U_p+\Omega_p\times x$（滑りなし）が成り立つ。</p>
+    <ul>
+      <li><strong>自由な球</strong>（力もトルクもかからない）は $U_p=U$、$\Omega_p=\Omega^\infty$ で動く（<a href="faxen.html">7.</a> の Faxén 則。線形流れでは $\nabla^2$ の補正が 0）。初めの二つの乱れは消える。</li>
+      <li>ところが、剛体の球は $E$ に合わせて変形できない。三つめの乱れは自由な球でも残り、球にはストレスレット $S=\tfrac{20}{3}\pi\mu a^3E$ が生じる（<a href="single-sphere.html">6.</a>）。これが懸濁液の粘度を上げる（<a href="faxen.html">7.</a> のアインシュタイン粘度）。</li>
+      <li><strong>固定した球</strong>では、球を止める力 $6\pi\mu a(U_p-U)$ とトルク $8\pi\mu a^3(\Omega_p-\Omega^\infty)$ が要り、その分の乱れ（ストークスレット $1/r$、ロットレット $1/r^2$）が加わる。</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>乱れの大きさと距離</h3>
+    <div id="lf-decay"></div>
+    <p class="caption">選んだ流れと球の条件で、半径 $r$ の円（$y=0$ の面内）の上で平均した乱れの速さ $|u-u^\infty|$。破線は $1/r$ と $1/r^2$ の傾き。乱れがない場合は描かない。</p>
+  </div>
+
+  <h2>やってみよう</h2>
+  <div class="prose">
+    <ol>
+      <li><strong>せん断の中の自由な球</strong>：球は $G/2$ の角速度で回る（印の動き）。球のすぐ近くのトレーサーは球のまわりを回り続け、離れたものは通り過ぎる。球の近くに、閉じた流線の層がある。</li>
+      <li><strong>回転の中の自由な球</strong>：「表示」を「乱れだけ」にすると、流線が消え、トレーサーも止まる。球は流体と一緒に回るだけで、流れをまったく乱さない。一様流の中の自由な球も同じ（球と一緒に動く人から見ると、流体は止まっている）。</li>
+      <li><strong>伸長の中の自由な球</strong>：球は動かず回りもしないが、乱れは 0 にならない。乱れだけを表示すると、球が縦から入る流れを押し返し、横へ出る流れを引き止めている様子が見える。</li>
+      <li><strong>固定した球</strong>：一様流の中で球を固定すると、乱れは $1/r$ でゆっくり減る（下のグラフ）。自由な球の伸長流の乱れ（$1/r^2$）と比べる。</li>
+      <li><strong>流れを逆にする</strong>：画面の中に残っていたトレーサーは、来た道をそのまま戻る。慣性のない流れの可逆性である（<a href="stokes-limit.html">4.</a>）。</li>
+    </ol>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>流れに乗って動く球は、流れを乱さない、と考える</strong>並進と回転は流れに合わせられても、変形には合わせられない。伸長やせん断の中では、自由な球もストレスレットの分だけ流れを乱す。</div>
+  <div class="pitfall"><strong>せん断流の中の球は、せん断速度 $G$ で回る、と考える</strong>球が回る角速度は流体の角速度 $\Omega^\infty$、つまり渦度の半分 $G/2$ である。せん断の残りの半分は伸長で、球を回さない。</div>
+</main>
+</body>
+</html>

@@ -44,7 +44,7 @@ export function createPlot(container, { width = 520, height = 300, xlabel = "", 
     svg.replaceChildren();
     const ok = (x, y) => Number.isFinite(x) && Number.isFinite(y) && (!xlog || x > 0) && (!ylog || y > 0);
     const all = series.flatMap((se) => se.points.filter(([x, y]) => ok(x, y))).concat(points.filter((p) => ok(p.x, p.y)).map((p) => [p.x, p.y]));
-    if (!all.length) return;
+    if (!all.length) { legend.replaceChildren(); return; }
     let [x0, x1] = xdomain ?? [Math.min(...all.map((p) => p[0])), Math.max(...all.map((p) => p[0]))];
     let [y0, y1] = ydomain ?? [Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[1]))];
     if (!ydomain && !ylog) { const pad = 0.06 * (y1 - y0 || Math.abs(y1) || 1); y0 -= pad; y1 += pad; }
