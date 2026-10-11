@@ -143,10 +143,14 @@ export const FAMILIES = ["XA", "YA", "YB", "XC", "YC", "XG", "YG", "YH"];
  * in the far field (test/joStresslet.test.js).
  */
 export function joFamilyPolynomials(fam, K, { exact = false } = {}) {
+  const T = exact ? exactOps : floatOps;
+  return familyRows(fam, K, T, tables(T));
+}
+
+// the recurrence tables t are shared by families that use the same problem (XA, XG; YA, YB, YG; YC, YH)
+function familyRows(fam, K, T, t) {
   if (!FAMILIES.includes(fam)) throw new RangeError(`unknown family ${fam}`);
   if (!(Number.isInteger(K) && K >= 0 && K < MAX_K)) throw new RangeError(`K must be an integer in [0, ${MAX_K})`);
-  const T = exact ? exactOps : floatOps;
-  const t = tables(T);
   const X = { XA: t.PA, YA: t.transA.P, YB: t.transA.Q, XC: t.QC, YC: t.transC.Q, XG: t.PA, YG: t.transA.P, YH: t.transC.P }[fam];
   const n = fam === "XG" || fam === "YG" || fam === "YH" ? 2 : 1;
   // (5.2) has a factor 2; the stresslet families the factors above
@@ -162,8 +166,9 @@ export function joFamilyPolynomials(fam, K, { exact = false } = {}) {
 }
 
 /** All families: { XA, YA, YB, XC, YC, XG, YG, YH }. */
-export function joAllPolynomials(K, opts) {
-  return Object.fromEntries(FAMILIES.map((f) => [f, joFamilyPolynomials(f, K, opts)]));
+export function joAllPolynomials(K, { exact = false } = {}) {
+  const T = exact ? exactOps : floatOps, t = tables(T);
+  return Object.fromEntries(FAMILIES.map((f) => [f, familyRows(f, K, T, t)]));
 }
 
 // Float64 value of a polynomial given by coefficients in increasing powers (Horner).

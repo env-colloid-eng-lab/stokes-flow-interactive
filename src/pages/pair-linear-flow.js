@@ -2,25 +2,30 @@ import { initPage, h, field, segmented, slider, fmt } from "../ui/page.js";
 import { createScene } from "../ui/scene2d.js";
 import { createPlot } from "../ui/plot.js";
 import { FLOWS } from "../models/linearFlow.js";
-import { bgTable, batchelorGreen, relativeTrajectory } from "../models/pairLinear.js";
+import { bgTable, relativeTrajectory } from "../models/pairLinear.js";
 
 initPage("p16");
 
 const W = 640, H = 460, BOX = 8;
 const st = { flow: "shear", model: "exact", ratio: 1, y0: 0, pick: null, anim: null, k: 0 };
 const tables = new Map(); // A, B per model and ratio (the exact one takes a moment to build)
-const tableFor = () => {
-  const key = `${st.model}:${st.ratio}`;
-  if (!tables.has(key)) tables.set(key, bgTable(st.model, { a1: 1, a2: st.ratio }));
+const tableOf = (model, ratio) => {
+  const key = `${model}:${ratio}`;
+  if (!tables.has(key)) tables.set(key, bgTable(model, { a1: 1, a2: ratio }));
   return tables.get(key);
 };
+const tableFor = () => tableOf(st.model, st.ratio);
 
 const MODEL_NAMES = [["none", "相互作用なし"], ["far", "遠方近似"], ["exact", "厳密（案B）"]];
 document.getElementById("pl-controls").append(
-  field("流れ", segmented([["shear", "単純せん断"], ["extension", "平面伸長"]], st.flow, (v) => { st.flow = v; st.pick = null; update(); })),
+  field("流れ", segmented([["shear", "単純せん断"], ["extension", "平面伸長"]], st.flow, (v) => { st.flow = v; dropPick(); update(); })),
   field("相互作用", segmented(MODEL_NAMES, st.model, (v) => { st.model = v; update(); })),
   field("半径比 a₂/a₁", segmented([[1, "1"], [0.5, "1/2"], [0.25, "1/4"]], st.ratio, (v) => { st.ratio = v; update(); })),
   slider({ label: "渦度方向のずれ y₀", min: 0, max: 2, step: 0.1, value: st.y0, format: (v) => v.toFixed(1), onInput: (v) => { st.y0 = v; schedule(); } }));
+function dropPick() {
+  stop();
+  st.pick = null;
+}
 const playBtn = h("button", { class: "action", type: "button", onclick: () => (st.anim ? stop() : start()) }, "動かす");
 // a closed orbit starts within ~1e-5 a of contact in the plane of shear: too close to click
 const closedBtn = h("button", { class: "action", type: "button", onclick: () => pickClosed() }, "閉じた軌道を選ぶ");
@@ -61,11 +66,19 @@ function trajectory(p0, tab, flow) {
   return { pts: [...bwd.pts.reverse(), ...fwd.pts.slice(1)], rmin: Math.min(fwd.rmin, bwd.rmin), closed: false };
 }
 
+// the picked start stays at the clicked (x, z), in the plane y = y0; with the exact functions it
+// must lie outside contact (after a change of model, ratio or y0 it may not)
+const allowed = (p) => st.model !== "exact" || Math.hypot(...p) > 1 + st.ratio;
+
 function update() {
   const flow = FLOWS[st.flow].make(1), tab = tableFor();
   const t0 = performance.now();
   family = seeds().map((p) => trajectory(p, tab, flow));
-  if (st.pick) st.pick.traj = trajectory(st.pick.p0, tab, flow);
+  if (st.pick) {
+    const p0 = [st.pick.p0[0], st.y0, st.pick.p0[2]];
+    if (allowed(p0)) st.pick = { p0, traj: trajectory(p0, tab, flow) };
+    else dropPick();
+  }
   st.k = 0;
   caption.textContent = `${MODEL_NAMES.find(([k]) => k === st.model)[1]}：${family.length} 本の軌道（${Math.round(performance.now() - t0)} ms）。` +
     (st.model === "exact" ? "厳密な関数では、球どうしは重ならない（y₀ = 0 では、どの軌道も破線の円の外に留まる）。" : "この近似では、球どうしが重なる軌道がある（y₀ = 0 では破線の円の中に入る）。");
@@ -75,8 +88,8 @@ function update() {
 }
 
 scene.svg.addEventListener("pointerdown", (e) => {
-  const [x, z] = scene.toWorld(e, view), a12 = 1 + st.ratio;
-  if (Math.hypot(x, st.y0, z) <= a12 && st.model === "exact") return; // inside the excluded sphere
+  const [x, z] = scene.toWorld(e, view);
+  if (!allowed([x, st.y0, z])) return; // inside the excluded sphere
   st.pick = { p0: [x, st.y0, z] };
   st.pick.traj = trajectory(st.pick.p0, tableFor(), FLOWS[st.flow].make(1));
   st.k = 0;
@@ -111,6 +124,7 @@ function start() {
   if (!st.pick?.traj) return;
   playBtn.textContent = "止める";
   const step = () => {
+    if (!st.pick?.traj) return stop();
     st.k = (st.k + 3) % st.pick.traj.pts.length;
     draw();
     st.anim = requestAnimationFrame(step);
@@ -128,7 +142,7 @@ function renderAB() {
   if (abDone) return; // equal spheres only, the same for every flow
   abDone = true;
   const xs = Array.from({ length: 48 }, (_, i) => 10 ** (-5 + (i * 7) / 47));
-  const ex = xs.map((x) => batchelorGreen(2 + x)), fa = xs.map((x) => batchelorGreen(2 + x, "far"));
+  const ex = xs.map((x) => tableOf("exact", 1).at(x)), fa = xs.map((x) => tableOf("far", 1).at(x));
   const r = (x) => 2 + x;
   abPlot.update({
     series: [

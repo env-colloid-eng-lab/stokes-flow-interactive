@@ -2,7 +2,7 @@
 // axisymmetric Stokes streamfunction modes. Port of TwoSphereLab.jl (chapter 12).
 // axialSolve takes any axisymmetric surface velocity (e.g. an axisymmetric strain, for X^G).
 // Non-axisymmetric motion is excluded.
-import { zeros, lstsq, cond } from "../core/linalg.js";
+import { lstsq, cond } from "../core/linalg.js";
 
 export function legendreAndDerivative(n, t) {
   if (n === 0) return [1, 0];

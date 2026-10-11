@@ -115,6 +115,15 @@ test("relative trajectories in shear: closed next to contact, open further out; 
   assert.ok(!open.closed && open.rmin > 2, "open orbit, no contact");
   const up = relativeTrajectory([-8, 0, 0.05], flow, exact, { box: 8.4 });
   assert.ok(up.rmin > 2 && Math.abs(up.pts.at(-1)[0]) > 8, "an upstream sphere passes round without touching");
+  // extension, near and on the compression axis: the gap shrinks below the table but stays positive
+  const ext = FLOWS.extension.make(1), finite = (t) => t.pts.every((p) => p.every(Number.isFinite));
+  const near = relativeTrajectory([0.01, 0, 7], ext, exact, { box: 8.4 });
+  assert.ok(finite(near) && near.rmin > 2 && near.pts.at(-1)[0] > 8, "leaves along the extension axis");
+  const axis = relativeTrajectory([0, 0, 7], ext, exact, { box: 8.4 });
+  assert.ok(finite(axis) && axis.pts.length < 8000, "on the axis it stops at contact");
+  assert.throws(() => relativeTrajectory([0, 0, 1.5], flow, exact), RangeError);
+  // the table keeps 1 - A ~ 4.08 xi below its grid
+  close(exact.at(1e-12).A1 / 1e-12, 4.0775, 1e-3, "1 - A at xi = 1e-12");
   // without lubrication the path crosses the excluded sphere and stays finite
   for (const model of ["none", "far"]) {
     const t = relativeTrajectory([-8, 0, 0.3], flow, bgTable(model, { n: 60 }), { box: 8.4 });
