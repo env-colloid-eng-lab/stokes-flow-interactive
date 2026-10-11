@@ -51,6 +51,12 @@ export const norm = (v) => Math.sqrt(dot(v, v));
 export const vadd = (u, v) => u.map((ui, i) => ui + v[i]);
 export const vsub = (u, v) => u.map((ui, i) => ui - v[i]);
 export const vscale = (u, c) => u.map((ui) => ui * c);
+/** Distance from the point p to the segment b-c (any dimension). */
+export function segmentDistance(p, b, c) {
+  const d = vsub(c, b), L2 = dot(d, d) || 1;
+  const t = Math.max(0, Math.min(1, dot(vsub(p, b), d) / L2));
+  return norm(vsub(vadd(b, vscale(d, t)), p));
+}
 export const cross = (u, v) => [
   u[1] * v[2] - u[2] * v[1],
   u[2] * v[0] - u[0] * v[2],

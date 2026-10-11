@@ -19,6 +19,18 @@
 //
 // Normalisation (JO 1.7): A_ab = 3 pi mu (a_a + a_b) X^A_ab, B_ab = pi mu (a_a + a_b)^2 Y^B_ab,
 // C_ab = pi mu (a_a + a_b)^3 X^C_ab, Y^C_ab. Forces and torques are those the spheres exert on the fluid.
+//
+// The stresslet couplings G_ab = pi mu (a_a + a_b)^2 (X^G, Y^G) and H_ab = pi mu (a_a + a_b)^3 Y^H
+// (force dipole that sphere a exerts on the fluid when sphere b translates or rotates; see
+// joRecurrence.js for their series) carry the near-contact terms
+//   X^G_11 = g1/xi + g2 ln(1/xi) + ..., g1 = 3 lambda^2 (1+lambda)^-3, g2 = (3/10) lambda (1 + 12 lambda - 4 lambda^2)(1+lambda)^-3
+//   Y^G_11 = g2 ln(1/xi) + ...,          g2 = (1/10) lambda (4 - lambda + 7 lambda^2)(1+lambda)^-3
+//   Y^H_11 = g2 ln(1/xi) + ...,          g2 = (1/10) lambda (2 - lambda)(1+lambda)^-2
+//   Y^H_12 = g5 ln(1/xi) + ...,          g5 = (2/5) lambda^2 (1 + 7 lambda)(1+lambda)^-5
+// and X^G_12, Y^G_12 the same with the factor -4/(1+lambda)^2. g1 is (3/2) times that of X^A (the squeeze
+// force acts at the contact point); the ln(1/xi) coefficients were identified from near-contact values of
+// the corrected expressions (Townsend 2023) at lambda = 1, 7/5, 5/7, which these forms reproduce exactly. The xi ln(1/xi) coefficients are fitted from the series (G3 below, a
+// few per cent): like every S they only change the speed of convergence, not the values.
 // Functions "22" and "21" follow from lambda -> 1/lambda (JO 1.9), see joPairScalarsAtGap.
 import { F as DATA, K as KMAX, LAMBDAS } from "../data/joValues.js";
 
@@ -47,6 +59,17 @@ const BASIS = {
 // The series is prefactor * sum_m f_m(lambda) (1 + lambda)^-m s^-m over the given parity.
 const even = 0, odd = 1;
 export const NAMES10 = ["XA11", "XA12", "YA11", "YA12", "YB11", "YB12", "XC11", "XC12", "YC11", "YC12"];
+export const NAMES_GH = ["XG11", "XG12", "YG11", "YG12", "YH11", "YH12"];
+const ALL_NAMES = [...NAMES10, ...NAMES_GH];
+// xi ln(1/xi) coefficients of X^G_11, Y^G_11, Y^H_11, Y^H_12 (JO normalisation), fitted from the series
+// near contact with the truncation tail of the basis included (the method gives X^A's g3 to ~1e-3)
+const G3 = {
+  1: { XG: 0.214, YG: 0.0621, YH11: 0.0674, YH12: 0.0557 },
+  0.5: { XG: 0.107, YG: 0.0248, YH11: 0.0274, YH12: 0.0513 },
+  2: { XG: 0.518, YG: 0.180, YH11: 0.136, YH12: 0.0892 },
+  0.25: { XG: 0.109, YG: 0.0161, YH11: 0.0147, YH12: 0.0463 },
+  4: { XG: 0.694, YG: 0.655, YH11: 0.210, YH12: 0.121 },
+};
 const defsCache = new Map();
 function checkLambda(lambda) {
   if (typeof lambda !== "number" || !LAMBDAS.includes(lambda))
@@ -61,6 +84,10 @@ export function functionsFor(lambda = 1) {
   const YB = { g2: -(l * (4 + l)) / (5 * L * L), g3: -(32 - 33 * l + 83 * l * l + 43 * l ** 3) / (250 * L * L) };
   const YC = { g2: (2 * l) / (5 * L), g3: (8 + 6 * l + 33 * l * l) / (125 * L), g4: (4 * l * l) / (5 * L ** 4), g5: (2 * l * (43 - 24 * l + 43 * l * l)) / (125 * L ** 4) };
   const k12 = -2 / L, kB = -4 / L ** 2;
+  const XG = { g1: (3 * l * l) / L ** 3, g2: (3 * l * (1 + 12 * l - 4 * l * l)) / (10 * L ** 3), g3: G3[l].XG };
+  const YG = { g2: (l * (4 - l + 7 * l * l)) / (10 * L ** 3), g3: G3[l].YG };
+  const YH = { g2: (l * (2 - l)) / (10 * L * L), g3: G3[l].YH11, g5: (2 * l * l * (1 + 7 * l)) / (5 * L ** 5), g6: G3[l].YH12 };
+  const kG = -4 / L ** 2;
   const defs = {
     XA11: ["XA", even, 1, [["E1", A.g1], ["E2", A.g2], ["E3", A.g3]]],
     XA12: ["XA", odd, k12, [["O1", k12 * A.g1], ["O2", k12 * A.g2], ["O3", k12 * A.g3]]],
@@ -72,6 +99,12 @@ export function functionsFor(lambda = 1) {
     XC12: ["XC", odd, -8 / L ** 3, [["C2", (4 * l * l) / L ** 4]]],
     YC11: ["YC", even, 1, [["E2", YC.g2], ["E3", YC.g3]]],
     YC12: ["YC", odd, 8 / L ** 3, [["O2", YC.g4], ["O3", YC.g5]]],
+    XG11: ["XG", odd, 1, [["O1", XG.g1], ["O2", XG.g2], ["O3", XG.g3]]],
+    XG12: ["XG", even, kG, [["E1", kG * XG.g1], ["E2", kG * XG.g2], ["E3", kG * XG.g3]]],
+    YG11: ["YG", odd, 1, [["O2", YG.g2], ["O3", YG.g3]]],
+    YG12: ["YG", even, kG, [["E2", kG * YG.g2], ["E3", kG * YG.g3]]],
+    YH11: ["YH", even, 1, [["E2", YH.g2], ["E3", YH.g3]]],
+    YH12: ["YH", odd, 8 / L ** 3, [["O2", YH.g5], ["O3", YH.g6]]],
   };
   // leading behaviour near contact (the 1/xi and ln(1/xi) parts), for display
   const lead = Object.fromEntries(Object.entries(defs).map(([n, [, , , sing]]) => {
@@ -112,7 +145,7 @@ export function remainder(name, K = KMAX, lambda = 1) {
  * contact (2 + xi - 2 would lose digits). { plain: true } sums the far-field series alone.
  */
 export function joScalarAtGap(name, xi, { K = KMAX, plain = false, lambda = 1 } = {}) {
-  if (!NAMES10.includes(name)) throw new RangeError(`unknown function ${name}`);
+  if (!ALL_NAMES.includes(name)) throw new RangeError(`unknown function ${name}`);
   if (!(xi > 0)) throw new RangeError("a positive gap is required (the spheres must not touch)");
   if (!(Number.isInteger(K) && K >= 0 && K <= KMAX)) throw new RangeError(`K must be an integer in [0, ${KMAX}]`);
   const s = 2 + xi;
@@ -153,6 +186,22 @@ const pairFromBoth = (one, inv) => ({
   YB22: -inv.YB11, YB21: -inv.YB12,
 });
 export const joScalars = (s, opts) => joScalarsAtGap(s - 2, opts);
+
+/**
+ * The stresslet couplings of a pair at lambda = a2/a1, with every block written along the same
+ * e = (x2 - x1)/r: G changes sign under 1 <-> 2 (an odd number of e), H does not, so
+ * X^G_22(lambda) = -X^G_11(1/lambda), X^G_21(lambda) = -X^G_12(1/lambda) (likewise Y^G),
+ * Y^H_22(lambda) = Y^H_11(1/lambda), Y^H_21(lambda) = Y^H_12(1/lambda).
+ */
+export function joStressletScalarsAtGap(xi, { lambda = 1, ...opts } = {}) {
+  const at = (l) => Object.fromEntries(NAMES_GH.map((n) => [n, joScalarAtGap(n, xi, { lambda: l, ...opts })]));
+  const one = at(lambda), inv = lambda === 1 ? one : at(1 / lambda);
+  return {
+    ...one,
+    XG22: -inv.XG11, XG21: -inv.XG12, YG22: -inv.YG11, YG21: -inv.YG12,
+    YH22: inv.YH11, YH21: inv.YH12,
+  };
+}
 
 // Leading near-contact behaviour (1/xi and ln(1/xi) parts), for display next to the full functions.
 export const nearContactAt = (name, xi, lambda = 1) => functionsFor(lambda).lead[name](xi);

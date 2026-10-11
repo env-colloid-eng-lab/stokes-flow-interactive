@@ -9,7 +9,7 @@ import { joAllPolynomials, joAllValues } from "../src/physics/joRecurrence.js";
 import { joPolynomials } from "../src/physics/jo.js";
 import { F as ALL } from "../src/data/joValues.js";
 const DATA = ALL["1"];
-import { joScalar, joScalarAtGap, joScalars, nearContact, remainder, FUNCTIONS } from "../src/physics/joFull.js";
+import { joScalar, joScalarAtGap, joScalars, nearContact, remainder, NAMES10 } from "../src/physics/joFull.js";
 import { resistance12, scalarsOf, rpyMobility12, pairScalarsAtGap, torqueFree, NAMES } from "../src/models/pairB.js";
 import { mobility } from "../src/physics/rpy.js";
 import { axialCollocation } from "../src/physics/collocation.js";
@@ -67,7 +67,8 @@ test("contact constants agree with JO (1984) tables at lambda = 1", () => {
 test("the singular coefficients make every remainder series converge (tail ~ m^-2 with a small constant)", () => {
   // A wrong 1/xi or ln coefficient would make r_m 2^-m grow or stay O(1/m); a wrong xi ln xi coefficient
   // leaves r_m 2^-m m^2 of the order of that error times 4 (YC12 with the printed g5 gives about 0.25).
-  for (const name of Object.keys(FUNCTIONS)) {
+  // (the ten A, B, C functions; the stresslet couplings are tested in joStresslet.test.js)
+  for (const name of NAMES10) {
     const r = remainder(name);
     for (let m = 190; m <= 200; m++) if (r[m] !== 0) assert.ok(Math.abs((r[m] / 2 ** m) * m * m) < 0.1, `${name} m=${m}: ${(r[m] / 2 ** m) * m * m}`);
   }

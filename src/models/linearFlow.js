@@ -5,7 +5,7 @@
 // the tests check the closed forms below against them):
 //   the sphere resists the strain E (it cannot deform); it moves or turns unlike the fluid
 // A free sphere (no force, no torque) has U_p = U, Omega_p = W; a fixed one U_p = Omega_p = 0.
-import { matvec, cross } from "../core/linalg.js";
+import { matvec, cross, segmentDistance } from "../core/linalg.js";
 import { faxenForce, faxenTorque, faxenStresslet } from "../physics/sphere.js";
 
 // The flows of the page, in the x-z plane (x right, z up, y into the screen), rate G.
@@ -82,12 +82,6 @@ export function streamline(p0, flow, motion, { a = 1, box = 12, h = 0.08, nmax =
   };
   const pts = [p0];
   let p = p0;
-  // distance from p0 to the segment b-c
-  const segDist = (b, c) => {
-    const dx = c[0] - b[0], dz = c[1] - b[1], L2 = dx * dx + dz * dz || 1;
-    const t = Math.max(0, Math.min(1, ((p0[0] - b[0]) * dx + (p0[1] - b[1]) * dz) / L2));
-    return Math.hypot(b[0] + t * dx - p0[0], b[1] + t * dz - p0[1]);
-  };
   for (let n = 0; n < nmax; n++) {
     const k1 = v(p), k2 = v([p[0] + (h / 2) * k1[0], p[1] + (h / 2) * k1[1]]);
     const k3 = v([p[0] + (h / 2) * k2[0], p[1] + (h / 2) * k2[1]]), k4 = v([p[0] + h * k3[0], p[1] + h * k3[1]]);
@@ -95,7 +89,7 @@ export function streamline(p0, flow, motion, { a = 1, box = 12, h = 0.08, nmax =
     const prev = p;
     p = [p[0] + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), p[1] + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])];
     // closed: the path comes back past p0 (within a fraction of a step, allowing for drift)
-    if (n > 20 && segDist(prev, p) < 0.25 * h) { pts.push(p0); break; }
+    if (n > 20 && segmentDistance(p0, prev, p) < 0.25 * h) { pts.push(p0); break; }
     pts.push(p);
     if (Math.abs(p[0]) > box || Math.abs(p[1]) > box || Math.hypot(p[0], p[1]) < a) break;
   }
