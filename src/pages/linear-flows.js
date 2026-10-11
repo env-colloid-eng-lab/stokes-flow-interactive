@@ -31,7 +31,7 @@ document.getElementById("lf-controls").append(
 const playBtn = h("button", { class: "action", type: "button", onclick: () => (st.anim ? stop() : start()) }, "止める");
 document.getElementById("lf-anim").append(
   playBtn,
-  h("button", { class: "action", type: "button", onclick: () => { st.sign = -st.sign; update(false); } }, "流れを逆にする"),
+  h("button", { class: "action", type: "button", onclick: reverse }, "流れを逆にする"),
   field("トレーサー", segmented([[true, "表示"], [false, "隠す"]], st.tracers, (v) => { st.tracers = v; draw(); })));
 
 const scene = createScene(document.getElementById("lf-scene"), { width: W, height: H });
@@ -51,14 +51,23 @@ const vel = (x, z) => {
   return [u[0] - f[0], u[2] - f[2]];
 };
 
-function update(reseed = true) {
+function update() {
   flow = FLOWS[st.flow].make(st.sign);
   motion = sphereMotion(flow, st.mode);
   lines = streamlines();
-  if (reseed || !st.pts.length) seedTracers();
+  seedTracers();
   renderTable();
   renderDecay();
   caption.textContent = captionText();
+  draw();
+}
+
+// G -> -G: the streamlines and the decay curve stay the same; only the motion and the table change
+function reverse() {
+  st.sign = -st.sign;
+  flow = FLOWS[st.flow].make(st.sign);
+  motion = sphereMotion(flow, st.mode);
+  renderTable();
   draw();
 }
 
@@ -100,16 +109,16 @@ function randomPoint() {
   }
 }
 function seedTracers() {
-  st.pts = Array.from({ length: 260 }, () => ({ p: randomPoint(), age: Math.floor(rnd() * 400) }));
+  st.pts = Array.from({ length: 260 }, () => ({ p: randomPoint() }));
 }
 function moveTracers(dt) {
   const half = view.span / 2;
   for (const t of st.pts) {
     const [x, z] = t.p, k1 = vel(x, z), k2 = vel(x + dt * k1[0], z + dt * k1[1]);
     t.p = [x + (dt / 2) * (k1[0] + k2[0]), z + (dt / 2) * (k1[1] + k2[1])];
-    t.age++;
-    // tracers that leave, touch the sphere or have lived long are put back at random
-    if (Math.abs(t.p[0]) > half || Math.abs(t.p[1]) > BOX || Math.hypot(...t.p) < a || t.age > 900) { t.p = randomPoint(); t.age = 0; }
+    // tracers that leave or touch the sphere are put back at random (the others can retrace
+    // their paths when the flow is reversed)
+    if (Math.abs(t.p[0]) > half || Math.abs(t.p[1]) > BOX || Math.hypot(...t.p) < a) t.p = randomPoint();
   }
 }
 
@@ -154,7 +163,7 @@ function renderTable() {
     ["球の角速度 Ω_y", fmt(motion.Wp[1], 3)],
     ["力 (F_x, F_z) ÷ 6πμa", v2(mo.F.map((v) => v / six))],
     ["トルク L_y ÷ 8πμa³", fmt(mo.L[1] / eight, 3)],
-    ["ストレスレット (S_xx, S_xz, S_zz) ÷ (20/3)πμa³", `(${fmt(mo.S[0][0] / twenty, 3)}, ${fmt(mo.S[0][2] / twenty, 3)}, ${fmt(mo.S[2][2] / twenty, 3)})`],
+    ["ストレスレット S (S_xx, S_xz, S_zz) ÷ (20/3)πμa³", `(${fmt(mo.S[0][0] / twenty, 3)}, ${fmt(mo.S[0][2] / twenty, 3)}, ${fmt(mo.S[2][2] / twenty, 3)})`],
   ];
   table.replaceChildren(h("table", { class: "data" }, ...rows.map(([k, v]) => h("tr", {}, h("td", {}, k), h("td", {}, v)))));
 }
@@ -191,4 +200,4 @@ function renderDecay() {
 
 update();
 start();
-renderMath();
+renderMath(document.getElementById("flow-table"));

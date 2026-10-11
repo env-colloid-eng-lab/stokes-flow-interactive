@@ -64,7 +64,8 @@ test("force, torque and stresslet agree with the surface traction", () => {
         return { p: fs.reduce((s, f) => s + f.p, 0), sigma: [0, 1, 2].map((i) => [0, 1, 2].map((j) => fs.reduce((s, f) => s + f.sigma[i][j], 0))) };
       };
       const sm = surfaceMoments(field, { nt: 10, np: 20 });
-      // traction integrals give what the fluid exerts on the sphere: minus what the sphere exerts
+      // traction integrals give what the fluid exerts on the sphere: minus what the sphere exerts;
+      // the stresslet is defined from the same traction (sphere.js), with no sign change
       [0, 1, 2].forEach((i) => {
         close(sm.F[i], -mo.F[i], 1e-9, `${mode} F${i}`);
         close(sm.T[i], -mo.L[i], 1e-9, `${mode} L${i}`);
@@ -92,11 +93,17 @@ test("far field: stresslet for a free sphere in strain, Stokeslet for a fixed on
 
 test("shear: closed streamlines next to a free sphere, open ones further out", () => {
   const flow = FLOWS.shear.make(1), m = sphereMotion(flow, "free");
-  const near = streamline([0, 1.1], flow, m);
-  const last = near[near.length - 1];
-  assert.ok(Math.hypot(last[0], last[1] - 1.1) < 1e-9 && near.length > 20, "near: closed");
+  for (const z0 of [1.02, 1.05, 1.1]) {
+    const near = streamline([0, z0], flow, m), last = near[near.length - 1];
+    assert.ok(last[0] === 0 && last[1] === z0 && near.length > 20 && near.length < 600, `near ${z0}: closed after one turn (${near.length} points)`);
+  }
   const far = streamline([0, 4], flow, m);
   assert.ok(Math.abs(far[far.length - 1][0]) > 12, "far: leaves the box");
+});
+
+test("velocity: an unknown part is refused", () => {
+  const flow = FLOWS.shear.make(1);
+  assert.throws(() => velocity([2, 0, 0], flow, sphereMotion(flow, "free"), { part: "disturb" }), RangeError);
 });
 
 test("ambient flows: shear u = G z e_x, extension G (x, 0, -z), rotation G (z, 0, -x)", () => {
