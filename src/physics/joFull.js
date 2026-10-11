@@ -29,8 +29,10 @@
 //   Y^H_12 = g5 ln(1/xi) + ...,          g5 = (2/5) lambda^2 (1 + 7 lambda)(1+lambda)^-5
 // and X^G_12, Y^G_12 the same with the factor -4/(1+lambda)^2. g1 is (3/2) times that of X^A (the squeeze
 // force acts at the contact point); the ln(1/xi) coefficients were identified from near-contact values of
-// the corrected expressions (Townsend 2023) at lambda = 1, 7/5, 5/7, which these forms reproduce exactly. The xi ln(1/xi) coefficients are fitted from the series (G3 below, a
-// few per cent): like every S they only change the speed of convergence, not the values.
+// the corrected expressions (Townsend 2023) at lambda = 1, 7/5, 5/7, which these forms reproduce exactly.
+// They are also those of Jeffrey's programs rxg.f, ryg.f, ryh.f (Jeffrey 1992), which give the
+// xi ln(1/xi) coefficients g3 used below (for Y^H_12 times 8/(1+lambda)^3, as g6). Like every S, the g3
+// only change the speed of convergence, not the values.
 // Functions "22" and "21" follow from lambda -> 1/lambda (JO 1.9), see joPairScalarsAtGap.
 import { F as DATA, K as KMAX, LAMBDAS } from "../data/joValues.js";
 
@@ -61,15 +63,6 @@ const even = 0, odd = 1;
 export const NAMES10 = ["XA11", "XA12", "YA11", "YA12", "YB11", "YB12", "XC11", "XC12", "YC11", "YC12"];
 export const NAMES_GH = ["XG11", "XG12", "YG11", "YG12", "YH11", "YH12"];
 const ALL_NAMES = [...NAMES10, ...NAMES_GH];
-// xi ln(1/xi) coefficients of X^G_11, Y^G_11, Y^H_11, Y^H_12 (JO normalisation), fitted from the series
-// near contact with the truncation tail of the basis included (the method gives X^A's g3 to ~1e-3)
-const G3 = {
-  1: { XG: 0.214, YG: 0.0621, YH11: 0.0674, YH12: 0.0557 },
-  0.5: { XG: 0.107, YG: 0.0248, YH11: 0.0274, YH12: 0.0513 },
-  2: { XG: 0.518, YG: 0.180, YH11: 0.136, YH12: 0.0892 },
-  0.25: { XG: 0.109, YG: 0.0161, YH11: 0.0147, YH12: 0.0463 },
-  4: { XG: 0.694, YG: 0.655, YH11: 0.210, YH12: 0.121 },
-};
 const defsCache = new Map();
 function checkLambda(lambda) {
   if (typeof lambda !== "number" || !LAMBDAS.includes(lambda))
@@ -84,10 +77,14 @@ export function functionsFor(lambda = 1) {
   const YB = { g2: -(l * (4 + l)) / (5 * L * L), g3: -(32 - 33 * l + 83 * l * l + 43 * l ** 3) / (250 * L * L) };
   const YC = { g2: (2 * l) / (5 * L), g3: (8 + 6 * l + 33 * l * l) / (125 * L), g4: (4 * l * l) / (5 * L ** 4), g5: (2 * l * (43 - 24 * l + 43 * l * l)) / (125 * L ** 4) };
   const k12 = -2 / L, kB = -4 / L ** 2;
-  const XG = { g1: (3 * l * l) / L ** 3, g2: (3 * l * (1 + 12 * l - 4 * l * l)) / (10 * L ** 3), g3: G3[l].XG };
-  const YG = { g2: (l * (4 - l + 7 * l * l)) / (10 * L ** 3), g3: G3[l].YG };
-  const YH = { g2: (l * (2 - l)) / (10 * L * L), g3: G3[l].YH11, g5: (2 * l * l * (1 + 7 * l)) / (5 * L ** 5), g6: G3[l].YH12 };
-  const kG = -4 / L ** 2;
+  const XG = { g1: (3 * l * l) / L ** 3, g2: (3 * l * (1 + 12 * l - 4 * l * l)) / (10 * L ** 3), g3: (5 + 181 * l - 453 * l * l + 566 * l ** 3 - 65 * l ** 4) / (140 * L ** 3) };
+  const YG = { g2: (l * (4 - l + 7 * l * l)) / (10 * L ** 3), g3: (32 - 179 * l + 532 * l * l - 356 * l ** 3 + 221 * l ** 4) / (500 * L ** 3) };
+  const kG = -4 / L ** 2, kH = 8 / L ** 3;
+  // Y^H_12: Jeffrey's g2, g3 times the series prefactor kH
+  const YH = {
+    g2: (l * (2 - l)) / (10 * L * L), g3: (16 - 61 * l + 180 * l * l + 2 * l ** 3) / (500 * L * L),
+    g5: (kH * l * l * (1 + 7 * l)) / (20 * L * L), g6: (kH * l * (43 + 147 * l - 185 * l * l + 221 * l ** 3)) / (1000 * L * L),
+  };
   const defs = {
     XA11: ["XA", even, 1, [["E1", A.g1], ["E2", A.g2], ["E3", A.g3]]],
     XA12: ["XA", odd, k12, [["O1", k12 * A.g1], ["O2", k12 * A.g2], ["O3", k12 * A.g3]]],
@@ -104,7 +101,7 @@ export function functionsFor(lambda = 1) {
     YG11: ["YG", odd, 1, [["O2", YG.g2], ["O3", YG.g3]]],
     YG12: ["YG", even, kG, [["E2", kG * YG.g2], ["E3", kG * YG.g3]]],
     YH11: ["YH", even, 1, [["E2", YH.g2], ["E3", YH.g3]]],
-    YH12: ["YH", odd, 8 / L ** 3, [["O2", YH.g5], ["O3", YH.g6]]],
+    YH12: ["YH", odd, kH, [["O2", YH.g5], ["O3", YH.g6]]],
   };
   // leading behaviour near contact (the 1/xi and ln(1/xi) parts), for display
   const lead = Object.fromEntries(Object.entries(defs).map(([n, [, , , sing]]) => {
