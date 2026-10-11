@@ -41,7 +41,7 @@ test("far field: Faxen laws for the coupling to the other sphere (equal spheres)
 });
 
 test("near contact: 150 and 200 terms agree (the singular parts carry the divergence)", () => {
-  // the 1/xi and ln(1/xi) coefficients are exact; the xi ln(1/xi) ones are fitted and only set the speed
+  // the singular coefficients (Jeffrey 1992) only set the speed of convergence
   for (const lam of LAMBDAS)
     for (const n of NAMES_GH)
       for (const xi of [1e-6, 1e-4, 1e-2, 0.3]) {
@@ -54,6 +54,22 @@ test("near contact: 150 and 200 terms agree (the singular parts carry the diverg
       const r = remainder(n, undefined, lam), k = r[r.length - 1] !== 0 ? r.length - 1 : r.length - 2; // last term of the parity
       assert.ok(Math.abs((r[k] / 2 ** k) * k) < 0.02, `${n} lambda=${lam}: r_m 2^-m m = ${(r[k] / 2 ** k) * k}`);
     }
+});
+
+test("Y^G, Y^H equal the output of Jeffrey's programs ryg.f, ryh.f (4 decimals)", () => {
+  const S = [2.01, 2.02, 2.05, 2.1, 2.5], lams = [1, 2, 4, 0.5];
+  const T = {
+    YG11: [[0.4390, 0.7058, 0.9518, 0.2881], [0.3560, 0.5611, 0.7294, 0.2358], [0.2506, 0.3808, 0.4625, 0.1688], [0.1768, 0.2583, 0.2922, 0.1210], [0.0457, 0.0574, 0.0500, 0.0327]],
+    YG12: [[-0.4773, -0.3356, -0.1615, -0.5717], [-0.3938, -0.2711, -0.1258, -0.4782], [-0.2872, -0.1902, -0.0828, -0.3572], [-0.2114, -0.1347, -0.0551, -0.2694], [-0.0678, -0.0381, -0.0133, -0.0928]],
+    YH11: [[0.0446, -0.0513, -0.1302, 0.0997], [0.0299, -0.0477, -0.1051, 0.0780], [0.0132, -0.0400, -0.0712, 0.0509], [0.0038, -0.0315, -0.0464, 0.0326], [-0.0033, -0.0084, -0.0067, 0.0045]],
+    YH12: [[0.4341, 0.3743, 0.1813, 0.2647], [0.3670, 0.3095, 0.1444, 0.2253], [0.2806, 0.2279, 0.0999, 0.1748], [0.2180, 0.1711, 0.0710, 0.1383], [0.0901, 0.0651, 0.0245, 0.0610]],
+  };
+  for (const [name, rows] of Object.entries(T))
+    rows.forEach((row, i) => lams.forEach((lam, j) => close(joStressletScalarsAtGap(S[i] - 2, { lambda: lam })[name], row[j], 5.01e-5, `${name} s=${S[i]} lambda=${lam}`)));
+  // the 22 and 21 functions of the same program at lambda = 2 (= 1/2 of the 11, 12 ones, with the signs of G)
+  const v = joStressletScalarsAtGap(0.01, { lambda: 2 });
+  close(v.YG22, -0.2881, 5.01e-5, "YG22"); close(v.YG21, 0.5717, 5.01e-5, "YG21");
+  close(v.YH22, 0.0997, 5.01e-5, "YH22"); close(v.YH21, 0.2647, 5.01e-5, "YH21");
 });
 
 test("X^G is 3/2 times X^A at the 1/xi order; Y^G, Y^H stay finite times ln(1/xi)", () => {
