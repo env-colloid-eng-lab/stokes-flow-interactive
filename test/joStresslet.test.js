@@ -2,7 +2,7 @@
 // two-sphere problem in a linear flow (models/pairLinear.js).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { joScalarAtGap, joStressletScalarsAtGap, remainder, NAMES_GH, LAMBDAS } from "../src/physics/joFull.js";
+import { joScalarAtGap, joStressletScalarsAtGap, remainder, functionsFor, NAMES_GH, LAMBDAS } from "../src/physics/joFull.js";
 import { axialSolve } from "../src/physics/collocation.js";
 import { pairInFlow, batchelorGreen, bgTable, relativeTrajectory } from "../src/models/pairLinear.js";
 import { FLOWS } from "../src/models/linearFlow.js";
@@ -41,7 +41,8 @@ test("far field: Faxen laws for the coupling to the other sphere (equal spheres)
 });
 
 test("near contact: 150 and 200 terms agree (the singular parts carry the divergence)", () => {
-  // the singular coefficients (Jeffrey 1992) only set the speed of convergence
+  // the 1/xi and ln(1/xi) coefficients must be exact (or the remainders diverge); the xi ln(1/xi)
+  // ones (g3) only set the speed of convergence
   for (const lam of LAMBDAS)
     for (const n of NAMES_GH)
       for (const xi of [1e-6, 1e-4, 1e-2, 0.3]) {
@@ -66,10 +67,32 @@ test("Y^G, Y^H equal the output of Jeffrey's programs ryg.f, ryh.f (4 decimals)"
   };
   for (const [name, rows] of Object.entries(T))
     rows.forEach((row, i) => lams.forEach((lam, j) => close(joStressletScalarsAtGap(S[i] - 2, { lambda: lam })[name], row[j], 5.01e-5, `${name} s=${S[i]} lambda=${lam}`)));
-  // the 22 and 21 functions of the same program at lambda = 2 (= 1/2 of the 11, 12 ones, with the signs of G)
-  const v = joStressletScalarsAtGap(0.01, { lambda: 2 });
-  close(v.YG22, -0.2881, 5.01e-5, "YG22"); close(v.YG21, 0.5717, 5.01e-5, "YG21");
-  close(v.YH22, 0.0997, 5.01e-5, "YH22"); close(v.YH21, 0.2647, 5.01e-5, "YH21");
+  // the program's own 22 and 21 tables (columns lambda = 2, 4): checks the label swap and its signs
+  const T2 = {
+    YG22: [[-0.2881, -0.2081], [-0.2358, -0.1718], [-0.1688, -0.1248], [-0.1210, -0.0908], [-0.0327, -0.0250]],
+    YG21: [[0.5717, 0.5952], [0.4782, 0.5018], [0.3572, 0.3802], [0.2694, 0.2908], [0.0928, 0.1038]],
+    YH22: [[0.0997, 0.0976], [0.0780, 0.0789], [0.0509, 0.0550], [0.0326, 0.0381], [0.0045, 0.0080]],
+    YH21: [[0.2647, 0.0910], [0.2253, 0.0768], [0.1748, 0.0593], [0.1383, 0.0471], [0.0610, 0.0220]],
+  };
+  for (const [name, rows] of Object.entries(T2))
+    rows.forEach((row, i) => [2, 4].forEach((lam, j) => close(joStressletScalarsAtGap(S[i] - 2, { lambda: lam })[name], row[j], 5.01e-5, `${name} s=${S[i]} lambda=${lam}`)));
+});
+
+test("g3 of X^G, Y^G, Y^H equal Jeffrey's separate expressions for the 22 and 21 functions at 1/lambda", () => {
+  // rxg.f, ryg.f, ryh.f write g3 twice: for 11/12 at lambda <= 1 and for 22/21 at x = 1/lambda > 1
+  const J = {
+    XG11: ["O3", (x) => (-65 + 566 * x - 453 * x * x + 181 * x ** 3 + 5 * x ** 4) / (140 * x * (1 + x) ** 3), 1],
+    YG11: ["O3", (x) => (221 - 356 * x + 532 * x * x - 179 * x ** 3 + 32 * x ** 4) / (500 * x * (1 + x) ** 3), 1],
+    YH11: ["E3", (x) => (2 + 180 * x - 61 * x * x + 16 * x ** 3) / (500 * x * (1 + x) ** 2), 1],
+    YH12: ["O3", (x) => (221 - 185 * x + 147 * x * x + 43 * x ** 3) / (1000 * x * x * (1 + x) ** 2), (l) => 8 / (1 + l) ** 3],
+  };
+  for (const l of LAMBDAS) {
+    const defs = functionsFor(l).defs;
+    for (const [name, [basis, g22, k]] of Object.entries(J)) {
+      const got = defs[name][3].find(([b]) => b === basis)[1], want = (typeof k === "function" ? k(l) : k) * g22(1 / l);
+      close(got, want, 1e-14, `${name} g3 at lambda=${l}`);
+    }
+  }
 });
 
 test("X^G is 3/2 times X^A at the 1/xi order; Y^G, Y^H stay finite times ln(1/xi)", () => {

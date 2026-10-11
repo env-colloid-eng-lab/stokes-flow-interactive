@@ -79,11 +79,12 @@ export function functionsFor(lambda = 1) {
   const k12 = -2 / L, kB = -4 / L ** 2;
   const XG = { g1: (3 * l * l) / L ** 3, g2: (3 * l * (1 + 12 * l - 4 * l * l)) / (10 * L ** 3), g3: (5 + 181 * l - 453 * l * l + 566 * l ** 3 - 65 * l ** 4) / (140 * L ** 3) };
   const YG = { g2: (l * (4 - l + 7 * l * l)) / (10 * L ** 3), g3: (32 - 179 * l + 532 * l * l - 356 * l ** 3 + 221 * l ** 4) / (500 * L ** 3) };
+  const kG = -4 / L ** 2, kH = 8 / L ** 3;
+  // Y^H_12: Jeffrey's g2, g3 times the series prefactor kH
   const YH = {
     g2: (l * (2 - l)) / (10 * L * L), g3: (16 - 61 * l + 180 * l * l + 2 * l ** 3) / (500 * L * L),
-    g5: (2 * l * l * (1 + 7 * l)) / (5 * L ** 5), g6: (8 * l * (43 + 147 * l - 185 * l * l + 221 * l ** 3)) / (1000 * L ** 5),
+    g5: (kH * l * l * (1 + 7 * l)) / (20 * L * L), g6: (kH * l * (43 + 147 * l - 185 * l * l + 221 * l ** 3)) / (1000 * L * L),
   };
-  const kG = -4 / L ** 2;
   const defs = {
     XA11: ["XA", even, 1, [["E1", A.g1], ["E2", A.g2], ["E3", A.g3]]],
     XA12: ["XA", odd, k12, [["O1", k12 * A.g1], ["O2", k12 * A.g2], ["O3", k12 * A.g3]]],
@@ -100,7 +101,7 @@ export function functionsFor(lambda = 1) {
     YG11: ["YG", odd, 1, [["O2", YG.g2], ["O3", YG.g3]]],
     YG12: ["YG", even, kG, [["E2", kG * YG.g2], ["E3", kG * YG.g3]]],
     YH11: ["YH", even, 1, [["E2", YH.g2], ["E3", YH.g3]]],
-    YH12: ["YH", odd, 8 / L ** 3, [["O2", YH.g5], ["O3", YH.g6]]],
+    YH12: ["YH", odd, kH, [["O2", YH.g5], ["O3", YH.g6]]],
   };
   // leading behaviour near contact (the 1/xi and ln(1/xi) parts), for display
   const lead = Object.fromEntries(Object.entries(defs).map(([n, [, , , sing]]) => {
