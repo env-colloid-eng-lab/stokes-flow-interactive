@@ -1,5 +1,6 @@
 // N coaxial spheres translating along the axis: boundary collocation with
 // axisymmetric Stokes streamfunction modes. Port of TwoSphereLab.jl (chapter 12).
+// axialSolve takes any axisymmetric surface velocity (e.g. an axisymmetric strain, for X^G).
 // Non-axisymmetric motion is excluded.
 import { zeros, lstsq, cond } from "../core/linalg.js";
 
@@ -42,11 +43,26 @@ function axialRows(rho, z, centers, radii, L) {
 // boundary residual and the condition number of the scaled system.
 export function axialCollocation(centers, radii, { L = 16, nc = 3 * L + 4, mu = 1, ncheck = 121, withCondition = true } = {}) {
   const N = radii.length;
+  // problem b: sphere b translates with unit speed along the axis, the others are at rest
+  const problems = Array.from({ length: N }, (_, b) => (al) => (al === b ? () => [0, 1] : () => [0, 0]));
+  const res = axialSolve(centers, radii, problems, { L, nc, mu, ncheck, withCondition });
+  return { R: res.F, C: res.C, boundaryError: res.boundaryError, condition: res.condition, L, nc, centers, radii };
+}
+
+/**
+ * Axisymmetric boundary-value problems for N coaxial spheres. problems[b](al) returns the surface
+ * velocity of sphere al in problem b as a function (rho, zRel) -> [u_rho, u_z], zRel = z - centre.
+ * Returns F[al][b], the axial force sphere al exerts on the fluid in problem b (8 pi mu a times the
+ * Stokeslet coefficient), the coefficients and the largest boundary residual.
+ */
+export function axialSolve(centers, radii, problems, { L = 16, nc = 3 * L + 4, mu = 1, ncheck = 121, withCondition = false } = {}) {
+  const N = radii.length, NP = problems.length;
   if (!(centers.length === N && N >= 1 && L >= 1 && nc >= L + 1 && mu > 0)) throw new RangeError("invalid dimensions/orders");
   if (!radii.every((a) => a > 0)) throw new RangeError("positive radii required");
   for (let i = 0; i < N; i++)
     for (let j = i + 1; j < N; j++)
       if (!(Math.abs(centers[i] - centers[j]) > radii[i] + radii[j])) throw new RangeError("spheres overlap or touch");
+  const data = problems.map((pb) => radii.map((_, al) => pb(al)));
 
   const A = [], rhs = [];
   for (let al = 0; al < N; al++) {
@@ -55,9 +71,8 @@ export function axialCollocation(centers, radii, { L = 16, nc = 3 * L + 4, mu = 
       const rho = radii[al] * Math.sqrt(1 - t * t), z = centers[al] + radii[al] * t;
       const [rr, rz] = axialRows(rho, z, centers, radii, L);
       A.push(rr, rz);
-      const bRho = new Array(N).fill(0), bZ = new Array(N).fill(0);
-      bZ[al] = 1;
-      rhs.push(bRho, bZ);
+      const u = data.map((d) => d[al](rho, z - centers[al]));
+      rhs.push(u.map((v) => v[0]), u.map((v) => v[1]));
     }
   }
   const ncol = A[0].length;
@@ -65,9 +80,9 @@ export function axialCollocation(centers, radii, { L = 16, nc = 3 * L + 4, mu = 
   const As = A.map((row) => row.map((v, c) => v / sc[c]));
   const C = lstsq(As, rhs).map((row, c) => row.map((v) => v / sc[c]));
 
-  const R = zeros(N);
+  const F = Array.from({ length: N }, () => new Array(NP).fill(0));
   for (let al = 0; al < N; al++)
-    for (let b = 0; b < N; b++) R[al][b] = 8 * Math.PI * mu * radii[al] * C[2 * L * al][b];
+    for (let b = 0; b < NP; b++) F[al][b] = 8 * Math.PI * mu * radii[al] * C[2 * L * al][b];
 
   let err = 0;
   for (let al = 0; al < N; al++) {
@@ -75,12 +90,13 @@ export function axialCollocation(centers, radii, { L = 16, nc = 3 * L + 4, mu = 
       const t = -0.999999 + (1.999998 * i) / (ncheck - 1);
       const rho = radii[al] * Math.sqrt(1 - t * t), z = centers[al] + radii[al] * t;
       const [rr, rz] = axialRows(rho, z, centers, radii, L);
-      for (let b = 0; b < N; b++) {
+      for (let b = 0; b < NP; b++) {
         let ur = 0, uz = 0;
         for (let c = 0; c < ncol; c++) { ur += rr[c] * C[c][b]; uz += rz[c] * C[c][b]; }
-        err = Math.max(err, Math.abs(ur), Math.abs(uz - (b === al ? 1 : 0)));
+        const [wr, wz] = data[b][al](rho, z - centers[al]);
+        err = Math.max(err, Math.abs(ur - wr), Math.abs(uz - wz));
       }
     }
   }
-  return { R, C, boundaryError: err, condition: withCondition ? cond(As) : NaN, L, nc, centers, radii };
+  return { F, C, boundaryError: err, condition: withCondition ? cond(As) : NaN };
 }

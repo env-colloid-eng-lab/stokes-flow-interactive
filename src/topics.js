@@ -41,6 +41,8 @@ export const pages = [
     title: "球を引っ張って動かす", desc: "ドラッグした球に周りの球がついてくる。相互作用なし・RPY・SD を切り替える", sec: "第8・14章の応用" },
   { id: "p15", num: 15, part: "play", status: "ready", file: "linear-flows.html",
     title: "線形流れの中の球", desc: "一様流・せん断・伸長・回転の中で、球はどう動き、流れをどう乱すか", sec: "第4〜7章の応用" },
+  { id: "p16", num: 16, part: "play", status: "ready", file: "pair-linear-flow.html",
+    title: "線形流れの中の二球", desc: "せん断の中の二球の相対軌道。xyz の抵抗問題から Batchelor–Green の A、B を得る", sec: "第13・14章の応用" },
 ];
 
 // from -> to : the result produced in `from` and how `to` uses it.
@@ -74,6 +76,9 @@ export const links = [
   { from: "p6", to: "p15", result: "6πμa、8πμa³、20πμa³/3", use: "固定した球の力・トルクと、自由な球にも残るストレスレット" },
   { from: "p7", to: "p15", result: "Faxén 則", use: "自由な球は中心の流速で動き、流体の角速度で回る" },
   { from: "p4", to: "p15", result: "可逆性", use: "流れを逆にするとトレーサーが来た道を戻る" },
+  { from: "p15", to: "p16", result: "線形流れの分解とストレスレット", use: "二球の表面が受けるひずみを、抵抗問題の右辺にする" },
+  { from: "p13", to: "p16", result: "二球の 12×12 抵抗行列（案B）", use: "力もトルクもない二球の速度を解く" },
+  { from: "p9", to: "p16", result: "接近モードの潤滑", use: "接触の手前で A → 1 となり、二球は衝突しない" },
 ];
 
 export const pageById = (id) => pages.find((p) => p.id === id);

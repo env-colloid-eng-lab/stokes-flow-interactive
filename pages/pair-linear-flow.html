@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>線形流れの中の二球</title>
+<link rel="stylesheet" href="../vendor/katex/katex.min.css">
+<link rel="stylesheet" href="../src/ui/style.css">
+<script defer src="../vendor/katex/katex.min.js"></script>
+<script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+<script type="module" src="../src/pages/pair-linear-flow.js"></script>
+</head>
+<body>
+<main>
+  <h1>16. 線形流れの中の二球</h1>
+  <p class="lead">せん断流れに乗って近づいた二つの球は、ぶつかるのか、すれ違うのか、互いのまわりを回り続けるのか。二球の抵抗問題を $x,y,z$ 成分のまま解いて相対運動を求め、Batchelor と Green の古典的な結果と同じになることを確かめる。</p>
+  <p class="caption" id="sec"></p>
+  <div id="links"></div>
+
+  <h2>抵抗問題として解く</h2>
+  <div class="prose">
+    <p>背景の流れ $u^\infty=U+\Omega^\infty\times x+E\cdot x$ の中に、力もトルクも受けない球 1・2 がある（<a href="linear-flows.html">15.</a>）。球 $\alpha$ の速度を $U_\alpha$、角速度を $\Omega_\alpha$ とし、背景の流れとの差を</p>
+    $$V_\alpha=U_\alpha-u^\infty(x_\alpha),\qquad O_\alpha=\Omega_\alpha-\Omega^\infty$$
+    <p>と書く。球の表面での乱れの速度は $V_\alpha+O_\alpha\times(x-x_\alpha)-E\cdot(x-x_\alpha)$ になる。前の二つは剛体運動なので、その分の力とトルクは二球の抵抗行列 $R_{FU}$（<a href="model-compare.html">13.</a>、12×12）で決まる。最後の項は「球の表面がひずみ $E$ に合わせて動く」運動で、その分の力 $\tilde G:E$ とトルク $\tilde H:E$ が新しく要る。力もトルクもないという条件は、12 個の未知数の連立一次方程式になる。</p>
+    $$R_{FU}\begin{pmatrix}V_1\\V_2\\O_1\\O_2\end{pmatrix}=\begin{pmatrix}\tilde G:E\\ \tilde H:E\end{pmatrix}$$
+    <p>$\tilde G$ と $\tilde H$ は、相反定理により、球が並進・回転したときに生じるストレスレットの係数 $G$・$H$ と同じものである。$G$ と $H$ も中心線 $e$ のまわりの軸対称性で三つのスカラー $X^G$・$Y^G$・$Y^H$ に分かれ、ブロックごとに</p>
+    $$\tilde G:E=\pi\mu(a_\alpha+a_\beta)^2\left[X^G(e\cdot E\cdot e)\,e+2Y^G\{E\cdot e-(e\cdot E\cdot e)\,e\}\right],\qquad \tilde H:E=2\pi\mu(a_\alpha+a_\beta)^3\,Y^H\,e\times(E\cdot e)$$
+    <p>となる。$X^G$・$Y^G$・$Y^H$ は、案B で使っている Jeffrey–Onishi の漸化式の同じ解から、各球の圧力の $n=2$ の係数（ストレスレット）として得られる。極座標 $r,\theta,\phi$ に書き直す必要はない。</p>
+    <p>こうして求めた相対速度 $U_2-U_1$ を、中心線方向と垂直方向に分けると、Batchelor と Green（1972）の形</p>
+    $$U_2-U_1=\Omega^\infty\times r+E\cdot r-\left[A(r)\,ee+B(r)\,(I-ee)\right]\cdot E\cdot r$$
+    <p>になる。$A$ と $B$ は、上の連立方程式を解いた結果から読み取れる二つの関数で、それ以上の情報はいらない。軌道の計算では、$A$・$B$ を細かい表にして、相対位置 $r$ を $x,y,z$ 成分のまま時間積分している。</p>
+  </div>
+
+  <h2>相対軌道</h2>
+  <div class="controls" id="pl-controls"></div>
+  <div class="grid wide">
+    <div class="card">
+      <div id="pl-scene"></div>
+      <div class="controls" id="pl-anim"></div>
+      <p class="caption" id="pl-caption"></p>
+    </div>
+    <div class="card">
+      <h3>選んだ軌道</h3>
+      <div id="pl-info"></div>
+      <p class="caption">球 1 を中心に置き、球 2 の中心の相対位置 $r$ を描く（$x$ 右、$z$ 上）。破線の円は、球 2 の中心が入れない球 $|r|&lt;a_1+a_2$ を $x$–$z$ 面に投影したもの。図の上をクリックすると、その位置から軌道を描く（時間を前にも後ろにも進める）。</p>
+    </div>
+  </div>
+
+  <h2>$A(r)$ と $B(r)$</h2>
+  <div class="card">
+    <div id="pl-ab"></div>
+    <p class="caption">実線は厳密（案B）、破線は遠方近似（相手の球のストレスレットの流れを Faxén 則で一度だけ受ける）、点線は遠方の展開 $A\approx5/r^3-8/r^5$、$B\approx16/(3r^5)$（半径 $a=1$）。接触では $A\to1$ となり、中心線方向の相対速度が 0 になる。</p>
+  </div>
+
+  <h2>やってみよう</h2>
+  <div class="prose">
+    <ol>
+      <li><strong>相互作用なし</strong>：軌道はまっすぐな流線で、球 2 は球 1 を素通りする（重なってしまう）。</li>
+      <li><strong>厳密（案B）</strong>：中心線に近いところから来た球も、接触せずに回り込んで反対側へ抜ける。来たときと同じ高さに戻る（前後対称）。</li>
+      <li><strong>閉じた軌道</strong>：せん断で「閉じた軌道を選ぶ」を押す（紫の線）。球 2 は球 1 のまわりを回り続ける。せん断の面内では、閉じた軌道は球 1 の真上で隙間が $a$ の $10^{-5}$ 程度というごく近くを通り、横では大きく張り出す。外から来る軌道は、その外側を通り過ぎる。</li>
+      <li><strong>遠方近似</strong>：接触の近くで $A$ が 1 にならないので、中心線方向の接近が止まらず、球どうしが重なってしまう。潤滑が衝突を防いでいることが分かる。</li>
+      <li><strong>伸長流れ</strong>：圧縮の方向（縦）から近づいた球は、接触の直前でゆっくりになり、伸長の方向（横）へ離れていく。</li>
+      <li><strong>面の外</strong>：「渦度方向のずれ $y_0$」を大きくすると、軌道は面の外を通る（図は $x$–$z$ 面への投影）。$y_0=1.9$ 付近では、真上の隙間が $0.02a$ 程度から出発しても閉じた軌道になり、閉じた領域が面内より広い。</li>
+    </ol>
+  </div>
+
+  <h2>よくある誤り</h2>
+  <div class="pitfall"><strong>流れに乗った二球は、いつか衝突する、と考える</strong>二球の隙間の流体は、隙間に比例した速さでしか押し出せない。厳密な流体力学だけでは、滑らかな球は有限の時間では接触しない。現実の衝突や凝集には、表面の粗さや分子間力など流体以外の力が必要になる。</div>
+  <div class="pitfall"><strong>Batchelor–Green の結果は極座標でしか得られない、と考える</strong>$A$・$B$ は相対速度を中心線方向と垂直方向に分けた係数にすぎない。二球の抵抗問題を直交座標の成分で解いても、同じ $A$・$B$ が出てくる。多体に広げるときには、こちらの書き方がそのまま使える。</div>
+</main>
+</body>
+</html>

@@ -4,6 +4,8 @@
 //   YA, YB: transverse translation, eqs. (4.6)-(4.11) with P = V = delta_1n, Q = 0
 //   YC: transverse rotation, the same recurrences with P = V = 0, Q = delta_1n, eqs. (7.3)-(7.5)
 //   XC: axisymmetric rotation, eq. (6.5)
+//   XG, YG, YH: the stresslet couplings, from the n = 2 pressure coefficients of the same solutions
+//     (P_2pq of the X^A, Y^A and Y^C problems); see joFamilyPolynomials
 // f_k(lambda) are the coefficients of the far-field series (3.13)-(3.14), (4.13)-(4.14), (5.3)-(5.4),
 // (6.7)-(6.8), (7.7)-(7.8). The exact back-end reproduces the polynomials printed in the paper;
 // the Float64 back-end agrees with it to rounding and is used to generate many terms.
@@ -122,30 +124,44 @@ function tables(T) {
   return { PA, transA: transverse("A"), transC: transverse("C"), QC };
 }
 
-const FAMILIES = ["XA", "YA", "YB", "XC", "YC"];
+export const FAMILIES = ["XA", "YA", "YB", "XC", "YC", "XG", "YG", "YH"];
 
 /**
  * f_k(lambda), k = 0..K, of one family as polynomial coefficients (increasing powers of lambda).
  * Only the recurrences that the family needs are run.
+ *
+ * The stresslet families use the n = 2 pressure coefficient: a pressure harmonic
+ * mu a^2 p_02 P_2(cos theta) / rho^3 belongs to the force dipole D = 2 pi mu a^2 p_02 (ee - I/3)
+ * exerted on the fluid (and likewise for m = 1). With the expansions (3.4), (4.3) and the
+ * problems (3.1), (4.1), (7.1) this gives, for sphere 1 (t_1 = a1/r, t_2 = a2/r),
+ *   X^G_11 - (1 + lambda)^2/4 X^G_12 = 3/4 sum_pq P_2pq t1^p t2^q          (X^A problem)
+ *   Y^G_11 - (1 + lambda)^2/4 Y^G_12 = 3/4 sum_pq P_2pq t1^p t2^q          (Y^A problem)
+ *   Y^H_11 + (1 + lambda)^3/(8 lambda) Y^H_12 = -3/8 sum_pq P_2pq t1^p t2^q (Y^C problem)
+ * and f_k = c 2^k sum_q P_2(k-q)q lambda^q with c = 3/4, 3/4, -3/8 (times lambda for odd k in
+ * Y^H, as for Y^C). The second problems put the odd powers into the 11 functions of G and the
+ * even powers into the 11 function of H. Signs and factors are checked against the Faxen laws
+ * in the far field (test/joStresslet.test.js).
  */
 export function joFamilyPolynomials(fam, K, { exact = false } = {}) {
   if (!FAMILIES.includes(fam)) throw new RangeError(`unknown family ${fam}`);
   if (!(Number.isInteger(K) && K >= 0 && K < MAX_K)) throw new RangeError(`K must be an integer in [0, ${MAX_K})`);
   const T = exact ? exactOps : floatOps;
   const t = tables(T);
-  const X = { XA: t.PA, YA: t.transA.P, YB: t.transA.Q, XC: t.QC, YC: t.transC.Q }[fam];
-  const extra = fam === "YB" ? T.int(2) : T.one;  // (5.2) has a factor 2
-  const oddTimesLambda = fam === "XC" || fam === "YC"; // from (6.6) and (7.6)
+  const X = { XA: t.PA, YA: t.transA.P, YB: t.transA.Q, XC: t.QC, YC: t.transC.Q, XG: t.PA, YG: t.transA.P, YH: t.transC.P }[fam];
+  const n = fam === "XG" || fam === "YG" || fam === "YH" ? 2 : 1;
+  // (5.2) has a factor 2; the stresslet families the factors above
+  const extra = { YB: T.int(2), XG: T.frac(3, 4), YG: T.frac(3, 4), YH: T.frac(-3, 8) }[fam] ?? T.one;
+  const oddTimesLambda = fam === "XC" || fam === "YC" || fam === "YH"; // from (6.6), (7.6)
   const rows = [];
   for (let k = 0; k <= K; k++) {
     const f = T.mul(T.int(2n ** BigInt(k)), extra);
-    const row = Array.from({ length: k + 1 }, (_, q) => T.mul(X(1, k - q, q), f));
+    const row = Array.from({ length: k + 1 }, (_, q) => T.mul(X(n, k - q, q), f));
     rows.push(oddTimesLambda && k % 2 ? [T.zero, ...row] : row);
   }
   return rows;
 }
 
-/** All five families: { XA, YA, YB, XC, YC }. */
+/** All families: { XA, YA, YB, XC, YC, XG, YG, YH }. */
 export function joAllPolynomials(K, opts) {
   return Object.fromEntries(FAMILIES.map((f) => [f, joFamilyPolynomials(f, K, opts)]));
 }
