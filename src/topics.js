@@ -39,6 +39,8 @@ export const pages = [
     title: "案A と案B を比べる", desc: "RPY 逆行列と Jeffrey–Onishi の厳密関数を 12×12 で比べる", sec: "第13・14章の先" },
   { id: "p14", num: 14, part: "play", status: "ready", file: "live.html",
     title: "球を引っ張って動かす", desc: "ドラッグした球に周りの球がついてくる。相互作用なし・RPY・SD を切り替える", sec: "第8・14章の応用" },
+  { id: "p15", num: 15, part: "play", status: "ready", file: "linear-flows.html",
+    title: "線形流れの中の球", desc: "一様流・せん断・伸長・回転の中で、球はどう動き、流れをどう乱すか", sec: "第4〜7章の応用" },
 ];
 
 // from -> to : the result produced in `from` and how `to` uses it.
@@ -68,6 +70,10 @@ export const links = [
   { from: "p7", to: "p14", result: "Faxén 則", use: "力を受けない球が周りの流れに乗って動く" },
   { from: "p8", to: "p14", result: "U = MF と RPY の対の移動度", use: "引っ張る向きで相手の動きが変わる（中心線方向は 2 倍）" },
   { from: "p10", to: "p14", result: "SD 型の多体抵抗", use: "押し付けた二球が潤滑でひとかたまりに動く" },
+  { from: "p2", to: "p15", result: "E と W の分解", use: "線形流れを並進・回転・変形に分け、球の振る舞いを部分ごとに見る" },
+  { from: "p6", to: "p15", result: "6πμa、8πμa³、20πμa³/3", use: "固定した球の力・トルクと、自由な球にも残るストレスレット" },
+  { from: "p7", to: "p15", result: "Faxén 則", use: "自由な球は中心の流速で動き、流体の角速度で回る" },
+  { from: "p4", to: "p15", result: "可逆性", use: "流れを逆にするとトレーサーが来た道を戻る" },
 ];
 
 export const pageById = (id) => pages.find((p) => p.id === id);
